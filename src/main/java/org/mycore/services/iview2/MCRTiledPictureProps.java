@@ -1,6 +1,6 @@
 package org.mycore.services.iview2;
 
-class MCRTiledPictureProps {
+public class MCRTiledPictureProps {
     int countTiles;
 
     int width;
@@ -8,4 +8,32 @@ class MCRTiledPictureProps {
     int height;
 
     int zoomlevel;
+
+    /**
+     * @return the countTiles
+     */
+    public int getCountTiles() {
+        return countTiles;
+    }
+
+    /**
+     * @return the width
+     */
+    public int getWidth() {
+        return width;
+    }
+
+    /**
+     * @return the height
+     */
+    public int getHeight() {
+        return height;
+    }
+
+    /**
+     * @return the zoomlevel
+     */
+    public int getZoomlevel() {
+        return zoomlevel;
+    }
 }
