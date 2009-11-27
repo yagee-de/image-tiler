@@ -100,6 +100,7 @@ public class MCRImage {
         //the absolute Path is the docportal-directory, therefore the path "../mycore/..."
         //waterMarkFile = ImageIO.read(new File(MCRIview2Props.getProperty("Watermark")));	
         File iviewFile = getTiledFile(this.tileDir, derivate, imagePath);
+        LOGGER.info("Saving tiles in " + iviewFile.getAbsolutePath());
         iviewFile.getParentFile().mkdirs();
         ZipOutputStream zout = new ZipOutputStream(new FileOutputStream(iviewFile));
         try {
@@ -148,10 +149,11 @@ public class MCRImage {
         }
     }
 
-    private void writeTile(ZipOutputStream zout, ImageWriter imageWriter, JPEGImageWriteParam imageWriteParam, BufferedImage tile, int x, int y, int z)
-            throws IOException {
+    private void writeTile(ZipOutputStream zout, ImageWriter imageWriter, JPEGImageWriteParam imageWriteParam, BufferedImage tile, int x,
+            int y, int z) throws IOException {
         if (tile != null) {
-            ZipEntry ze = new ZipEntry(new StringBuilder(Integer.toString(z)).append('/').append(y).append('/').append(x).append(".jpg").toString());
+            ZipEntry ze = new ZipEntry(new StringBuilder(Integer.toString(z)).append('/').append(y).append('/').append(x).append(".jpg")
+                    .toString());
             zout.putNextEntry(ze);
             ImageOutputStream imageOutputStream = ImageIO.createImageOutputStream(zout);
             try {
@@ -291,6 +293,8 @@ public class MCRImage {
      * @return tile directory of derivate if <code>imagePath</code> is null or the tile file (.iview2)
      */
     public static File getTiledFile(File tileDir, String derivate, String imagePath) {
+        if (LOGGER.isDebugEnabled())
+            LOGGER.debug("tileDir: " + tileDir + ", derivate: " + derivate + ", imagePath: " + imagePath);
         String[] idParts = derivate.split("_");
         for (int i = 0; i < idParts.length - 1; i++) {
             tileDir = new File(tileDir, idParts[i]);
