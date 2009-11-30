@@ -99,24 +99,25 @@ public class MCRImage {
     public MCRTiledPictureProps tile() throws IOException {
         //the absolute Path is the docportal-directory, therefore the path "../mycore/..."
         //waterMarkFile = ImageIO.read(new File(MCRIview2Props.getProperty("Watermark")));	
+        //create JPEG ImageWriter
+        ImageWriter imageWriter = ImageIO.getImageWritersBySuffix("jpeg").next();
+        JPEGImageWriteParam imageWriteParam = new JPEGImageWriteParam(Locale.getDefault());
+        try {
+            imageWriteParam.setProgressiveMode(JPEGImageWriteParam.MODE_DEFAULT);
+        } catch (UnsupportedOperationException e) {
+            LOGGER.warn("Your JPEG encoder does not support progressive JPEGs.");
+        }
+        imageWriteParam.setCompressionMode(JPEGImageWriteParam.MODE_EXPLICIT);
+        imageWriteParam.setCompressionQuality(0.75f);
+        //ImageWriter created
+        System.out.println("Start load");
+        BufferedImage image = loadImage();
+        System.out.println("End load");
         File iviewFile = getTiledFile(this.tileDir, derivate, imagePath);
         LOGGER.info("Saving tiles in " + iviewFile.getAbsolutePath());
         iviewFile.getParentFile().mkdirs();
         ZipOutputStream zout = new ZipOutputStream(new FileOutputStream(iviewFile));
         try {
-            BufferedImage image = loadImage();
-            //create JPEG ImageWriter
-            ImageWriter imageWriter = ImageIO.getImageWritersBySuffix("jpeg").next();
-            JPEGImageWriteParam imageWriteParam = new JPEGImageWriteParam(Locale.getDefault());
-            try {
-                imageWriteParam.setProgressiveMode(JPEGImageWriteParam.MODE_DEFAULT);
-            } catch (UnsupportedOperationException e) {
-                LOGGER.warn("Your JPEG encoder does not support progressive JPEGs.");
-            }
-            imageWriteParam.setCompressionMode(JPEGImageWriteParam.MODE_EXPLICIT);
-            imageWriteParam.setCompressionQuality(0.75f);
-            //ImageWriter created
-
             int zoomLevels = getZoomLevels(image);
             LOGGER.info("Will generate " + zoomLevels + " zoom levels.");
             for (int z = zoomLevels; z >= 0; z--) {
@@ -233,6 +234,7 @@ public class MCRImage {
 
     private int getZoomLevels(RenderedImage image) {
         int maxDim = image.getHeight() > image.getWidth() ? image.getHeight() : image.getWidth();
+        LOGGER.info("maximum dimension: " + maxDim);
         int zoomLevel = 0;
         while (maxDim > TILE_SIZE) {
             zoomLevel++;
