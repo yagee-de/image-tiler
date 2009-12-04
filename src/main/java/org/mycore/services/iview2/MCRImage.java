@@ -57,29 +57,41 @@ import com.sun.media.jai.codec.MemoryCacheSeekableStream;
 
 public class MCRImage {
 
-    private File imageFile;
+    protected File imageFile;
 
-    private BufferedImage waterMarkFile;
+    protected BufferedImage waterMarkFile;
 
     private static Logger LOGGER = Logger.getLogger(MCRImage.class);
 
-    BufferedImage image;
+    protected BufferedImage image;
 
-    private static final int TILE_SIZE = 256;
+    protected static final int TILE_SIZE = 256;
 
-    private AtomicInteger imageTilesCount = new AtomicInteger();
+    protected AtomicInteger imageTilesCount = new AtomicInteger();
 
-    private int imageWidth;
+    protected int imageWidth;
 
-    private int imageHeight;
+    protected int imageHeight;
 
-    private int imageZoomLevels;
+    protected int imageZoomLevels;
 
-    private String derivate;
+    protected String derivate;
 
-    private String imagePath;
+    protected String imagePath;
 
-    private File tileDir;
+    protected File tileDir;
+
+    private static JPEGImageWriteParam imageWriteParam;
+    static {
+        imageWriteParam = new JPEGImageWriteParam(Locale.getDefault());
+        try {
+            imageWriteParam.setProgressiveMode(JPEGImageWriteParam.MODE_DEFAULT);
+        } catch (UnsupportedOperationException e) {
+            LOGGER.warn("Your JPEG encoder does not support progressive JPEGs.");
+        }
+        imageWriteParam.setCompressionMode(JPEGImageWriteParam.MODE_EXPLICIT);
+        imageWriteParam.setCompressionQuality(0.75f);
+    }
 
     public MCRImage(File file, String derivateID, String imagePath) {
         this.imageFile = file;
@@ -100,23 +112,10 @@ public class MCRImage {
         //the absolute Path is the docportal-directory, therefore the path "../mycore/..."
         //waterMarkFile = ImageIO.read(new File(MCRIview2Props.getProperty("Watermark")));	
         //create JPEG ImageWriter
-        ImageWriter imageWriter = ImageIO.getImageWritersBySuffix("jpeg").next();
-        JPEGImageWriteParam imageWriteParam = new JPEGImageWriteParam(Locale.getDefault());
-        try {
-            imageWriteParam.setProgressiveMode(JPEGImageWriteParam.MODE_DEFAULT);
-        } catch (UnsupportedOperationException e) {
-            LOGGER.warn("Your JPEG encoder does not support progressive JPEGs.");
-        }
-        imageWriteParam.setCompressionMode(JPEGImageWriteParam.MODE_EXPLICIT);
-        imageWriteParam.setCompressionQuality(0.75f);
+        ImageWriter imageWriter = getImageWriter();
         //ImageWriter created
-        System.out.println("Start load");
         BufferedImage image = loadImage();
-        System.out.println("End load");
-        File iviewFile = getTiledFile(this.tileDir, derivate, imagePath);
-        LOGGER.info("Saving tiles in " + iviewFile.getAbsolutePath());
-        iviewFile.getParentFile().mkdirs();
-        ZipOutputStream zout = new ZipOutputStream(new FileOutputStream(iviewFile));
+        ZipOutputStream zout = getZipOutputStream();
         try {
             int zoomLevels = getZoomLevels(image);
             LOGGER.info("Will generate " + zoomLevels + " zoom levels.");
@@ -130,7 +129,7 @@ public class MCRImage {
                 for (int y = 0; y <= getMaxTileY; y++) {
                     for (int x = 0; x <= getMaxTileX; x++) {
                         BufferedImage tile = getTile(image, x, y, z);
-                        writeTile(zout, imageWriter, imageWriteParam, tile, x, y, z);
+                        writeTile(zout, imageWriter, tile, x, y, z);
                     }
                 }
                 if (z > 0)
@@ -139,18 +138,35 @@ public class MCRImage {
             imageWriter.dispose();
             //close imageOutputStream after disposing imageWriter or else application will hang
             writeMetaData(zout);
-            MCRTiledPictureProps picProps = new MCRTiledPictureProps();
-            picProps.width = imageWidth;
-            picProps.height = imageHeight;
-            picProps.zoomlevel = imageZoomLevels;
-            picProps.countTiles = imageTilesCount.get();
-            return picProps;
+            return getImageProperties();
         } finally {
             zout.close();
         }
     }
 
-    private void writeTile(ZipOutputStream zout, ImageWriter imageWriter, JPEGImageWriteParam imageWriteParam, BufferedImage tile, int x,
+    protected MCRTiledPictureProps getImageProperties() {
+        MCRTiledPictureProps picProps = new MCRTiledPictureProps();
+        picProps.width = imageWidth;
+        picProps.height = imageHeight;
+        picProps.zoomlevel = imageZoomLevels;
+        picProps.countTiles = imageTilesCount.get();
+        return picProps;
+    }
+
+    protected ImageWriter getImageWriter() {
+        ImageWriter imageWriter = ImageIO.getImageWritersBySuffix("jpeg").next();
+        return imageWriter;
+    }
+
+    protected ZipOutputStream getZipOutputStream() throws FileNotFoundException {
+        File iviewFile = getTiledFile(this.tileDir, derivate, imagePath);
+        LOGGER.info("Saving tiles in " + iviewFile.getAbsolutePath());
+        iviewFile.getParentFile().mkdirs();
+        ZipOutputStream zout = new ZipOutputStream(new FileOutputStream(iviewFile));
+        return zout;
+    }
+
+    protected void writeTile(ZipOutputStream zout, ImageWriter imageWriter, BufferedImage tile, int x,
             int y, int z) throws IOException {
         if (tile != null) {
             ZipEntry ze = new ZipEntry(new StringBuilder(Integer.toString(z)).append('/').append(y).append('/').append(x).append(".jpg")
@@ -171,7 +187,7 @@ public class MCRImage {
         }
     }
 
-    private BufferedImage scaleBufferedImage(BufferedImage image) {
+    protected BufferedImage scaleBufferedImage(BufferedImage image) {
         LOGGER.info("Scaling image...");
         BufferedImage scaled;
         int width = image.getWidth() / 2;
