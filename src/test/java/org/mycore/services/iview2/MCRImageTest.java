@@ -15,9 +15,9 @@ public class MCRImageTest extends TestCase {
         super.setUp();
     }
     public void testTiling() throws Exception {
-        String filePath = pics.get("large");
+        String filePath = pics.get("small");
         File file =new File(filePath);
-        MCRImage image = new MCRImage(file , "derivateID", "imagePath/" + FilenameUtils.getName(filePath));
+        MCRImage image = new MCRMemSaveImage(file , "derivateID", "imagePath/" + FilenameUtils.getName(filePath));
         File tiledir = new File("target/tileDir");
         image.setTileDir(tiledir);
         image.tile();
