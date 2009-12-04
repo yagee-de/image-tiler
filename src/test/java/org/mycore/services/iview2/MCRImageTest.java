@@ -21,7 +21,6 @@ public class MCRImageTest extends TestCase {
         File tiledir = new File("target/tileDir");
         image.setTileDir(tiledir);
         image.tile();
-        
         assertTrue(tiledir.exists());
     }
 }
