@@ -17,6 +17,7 @@ public class MCRImageTest extends TestCase {
     @Override
     protected void setUp() throws Exception {
         pics.put("small", "src/test/resources/Bay_of_Noboto.jpg");
+        pics.put("large", "/home/chi/Bilder/Domstiftsarchiv-Naumburg/Grundriss-streitige-Jagd-18.Jh_bearbeitet.tif");
         super.setUp();
     }
 
@@ -32,15 +33,16 @@ public class MCRImageTest extends TestCase {
 
     public void testReadRegion() throws Exception {
         // Test this with the GB image
-        File file = new File(pics.get("small"));
-        MCRMemSaveImage saveImage = new MCRMemSaveImage(file, "", "");
-        ImageReader reader = saveImage.getReader();
+        File file = new File(pics.get("large"));
         StopWatch stopWatch = new StopWatch();
         stopWatch.start();
-        BufferedImage tileOfFile = saveImage.getTileOfFile(reader, 3000, 500, MCRMemSaveImage.MEGA_TILE_SIZE, MCRMemSaveImage.MEGA_TILE_SIZE);
+        MCRMemSaveImage saveImage = new MCRMemSaveImage(file, "", "");
+        BufferedImage tileOfFile = saveImage.getTileOfFile(3000, 500, MCRMemSaveImage.MEGA_TILE_SIZE, MCRMemSaveImage.MEGA_TILE_SIZE);
         stopWatch.stop();
         
         assertNotNull(tileOfFile);
-        assertTrue(stopWatch.getTime() < 5000);
+        long time = stopWatch.getTime();
+        System.out.println("(" + saveImage.getImageWidth() +"x"+saveImage.getImageHeight()+") read region time: " + time);
+        assertTrue(time < 5000);
     }
 }

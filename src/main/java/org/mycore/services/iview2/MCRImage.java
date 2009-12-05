@@ -69,11 +69,11 @@ public class MCRImage {
 
     protected AtomicInteger imageTilesCount = new AtomicInteger();
 
-    protected int imageWidth;
+    private int imageWidth;
 
-    protected int imageHeight;
+    private int imageHeight;
 
-    protected int imageZoomLevels;
+    private int imageZoomLevels;
 
     protected String derivate;
 
@@ -146,9 +146,9 @@ public class MCRImage {
 
     protected MCRTiledPictureProps getImageProperties() {
         MCRTiledPictureProps picProps = new MCRTiledPictureProps();
-        picProps.width = imageWidth;
-        picProps.height = imageHeight;
-        picProps.zoomlevel = imageZoomLevels;
+        picProps.width = getImageWidth();
+        picProps.height = getImageHeight();
+        picProps.zoomlevel = getImageZoomLevels();
         picProps.countTiles = imageTilesCount.get();
         return picProps;
     }
@@ -256,9 +256,9 @@ public class MCRImage {
             zoomLevel++;
             maxDim = maxDim / 2;
         }
-        imageHeight = image.getHeight();
-        imageWidth = image.getWidth();
-        imageZoomLevels = zoomLevel;
+        setImageHeight(image.getHeight());
+        setImageWidth(image.getWidth());
+        setImageZoomLevels(zoomLevel);
         return zoomLevel;
     }
 
@@ -285,9 +285,9 @@ public class MCRImage {
             rootElement.setAttribute("derivate", derivate);
             rootElement.setAttribute("path", imagePath);
             rootElement.setAttribute("tiles", imageTilesCount.toString());
-            rootElement.setAttribute("width", Integer.toString(imageWidth));
-            rootElement.setAttribute("height", Integer.toString(imageHeight));
-            rootElement.setAttribute("zoomLevel", Integer.toString(imageZoomLevels));
+            rootElement.setAttribute("width", Integer.toString(getImageWidth()));
+            rootElement.setAttribute("height", Integer.toString(getImageHeight()));
+            rootElement.setAttribute("zoomLevel", Integer.toString(getImageZoomLevels()));
             XMLOutputter xout = new XMLOutputter(Format.getCompactFormat());
             xout.output(imageInfo, zout);
         } finally {
@@ -329,5 +329,29 @@ public class MCRImage {
             return tileDir;
         String relPath = imagePath.substring(0, imagePath.lastIndexOf('.')) + ".iview2";
         return new File(tileDir.getAbsolutePath() + "/" + relPath);
+    }
+
+    protected void setImageWidth(int imageWidth) {
+        this.imageWidth = imageWidth;
+    }
+
+    public int getImageWidth() {
+        return imageWidth;
+    }
+
+    protected void setImageHeight(int imageHeight) {
+        this.imageHeight = imageHeight;
+    }
+
+    public int getImageHeight() {
+        return imageHeight;
+    }
+
+    protected void setImageZoomLevels(int imageZoomLevels) {
+        this.imageZoomLevels = imageZoomLevels;
+    }
+
+    public int getImageZoomLevels() {
+        return imageZoomLevels;
     }
 }
