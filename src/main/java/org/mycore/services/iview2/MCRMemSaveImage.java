@@ -48,7 +48,7 @@ public class MCRMemSaveImage extends MCRImage {
 
     private static int ZOOM_LEVEL_AT_A_TIME = 4;
 
-    private static int MEGA_TILE_SIZE = MCRImage.TILE_SIZE * (int) Math.pow(2, ZOOM_LEVEL_AT_A_TIME); //4096x4096
+    protected static int MEGA_TILE_SIZE = MCRImage.TILE_SIZE * (int) Math.pow(2, ZOOM_LEVEL_AT_A_TIME); //4096x4096
     
     public MCRMemSaveImage(File file, String derivateID, String imagePath) {
         super(file, derivateID, imagePath);
@@ -156,7 +156,7 @@ public class MCRMemSaveImage extends MCRImage {
         return reader;
     }
 
-    private BufferedImage getTileOfFile(ImageReader reader, int x, int y, int width, int height) throws IOException {
+    protected BufferedImage getTileOfFile(ImageReader reader, int x, int y, int width, int height) throws IOException {
         ImageReadParam param = reader.getDefaultReadParam();
 //        int xDim = Math.min(width, this.imageWidth - x);
 //        int yDim = Math.min(height, this.imageHeight - y);
