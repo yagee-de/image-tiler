@@ -15,7 +15,6 @@ public class MCRImageTest extends TestCase {
     @Override
     protected void setUp() throws Exception {
         pics.put("small", "src/test/resources/Bay_of_Noboto.jpg");
-        pics.put("large", "/home/chi/Bilder/Domstiftsarchiv-Naumburg/Grundriss-streitige-Jagd-18.Jh_bearbeitet.tif");
         super.setUp();
     }
 
@@ -31,7 +30,7 @@ public class MCRImageTest extends TestCase {
 
     public void testReadRegion() throws Exception {
         // Test this with the GB image
-        File file = new File(pics.get("large"));
+        File file = new File(pics.get("small"));
         StopWatch stopWatch = new StopWatch();
         stopWatch.start();
         MCRMemSaveImage saveImage = new MCRMemSaveImage(file, "", "");
