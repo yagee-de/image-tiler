@@ -4,8 +4,6 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.HashMap;
 
-import javax.imageio.ImageReader;
-
 import junit.framework.TestCase;
 
 import org.apache.commons.io.FilenameUtils;

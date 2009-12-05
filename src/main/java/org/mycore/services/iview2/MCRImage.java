@@ -81,6 +81,8 @@ public class MCRImage {
 
     protected File tileDir;
 
+    private ImageWriter imageWriter;
+
     private static JPEGImageWriteParam imageWriteParam;
     static {
         imageWriteParam = new JPEGImageWriteParam(Locale.getDefault());
@@ -97,6 +99,7 @@ public class MCRImage {
         this.imageFile = file;
         this.derivate = derivateID;
         this.imagePath = imagePath;
+        setImageWriter(createImageWriter());
         LOGGER.info("MCRImage initialized");
     }
 
@@ -154,6 +157,10 @@ public class MCRImage {
     }
 
     protected ImageWriter getImageWriter() {
+        return imageWriter;
+    }
+    
+    protected ImageWriter createImageWriter() {
         ImageWriter imageWriter = ImageIO.getImageWritersBySuffix("jpeg").next();
         return imageWriter;
     }
@@ -353,5 +360,9 @@ public class MCRImage {
 
     public int getImageZoomLevels() {
         return imageZoomLevels;
+    }
+
+    private void setImageWriter(ImageWriter imageWriter) {
+        this.imageWriter = imageWriter;
     }
 }
