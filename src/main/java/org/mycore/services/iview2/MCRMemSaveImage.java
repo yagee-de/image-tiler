@@ -90,6 +90,7 @@ public class MCRMemSaveImage extends MCRImage {
             //                    BufferedImage tile = writeTiles(zout, imageWriter, megaTile, x, y, this.imageZoomLevels);
             //                }
         } finally {
+            // do we need to set the reader and writer to null?? like setImageReader(null) explicitly
             getImageReader().dispose();
             getImageWriter().dispose();
 
