@@ -39,11 +39,15 @@ import javax.imageio.ImageReader;
 import javax.imageio.ImageTypeSpecifier;
 import javax.imageio.stream.ImageInputStream;
 
+import org.apache.log4j.Logger;
+
 /**
- * @author Thomas Scheffler (yagee)
+ * @author Thomas Scheffler (yagee) & ich!!!
  *
  */
 public class MCRMemSaveImage extends MCRImage {
+    private static Logger LOGGER = Logger.getLogger(MCRMemSaveImage.class);
+
     private static final double LOG_2 = Math.log(2);
 
     private static final short TILE_SIZE_FACTOR = (short) (Math.log(TILE_SIZE) / LOG_2);
@@ -75,29 +79,29 @@ public class MCRMemSaveImage extends MCRImage {
             int xcount = (int) Math.ceil((float) getImageWidth() / (float) MEGA_TILE_SIZE);
             int ycount = (int) Math.ceil((float) getImageHeight() / (float) MEGA_TILE_SIZE);
             int imageZoomLevels = getImageZoomLevels();
+            int zoomFactor = MEGA_TILE_SIZE / TILE_SIZE;
 
             for (int x = 0; x < xcount; x++)
                 for (int y = 0; y < ycount; y++) {
-                    
+                    LOGGER.info("create new mega tile (" + x + "," + y + ")" );
                     int xpos = x * MEGA_TILE_SIZE;
                     int width = Math.min(MEGA_TILE_SIZE, getImageWidth() - xpos);
                     int ypos = y * MEGA_TILE_SIZE;
                     int height = Math.min(MEGA_TILE_SIZE, getImageHeight() - ypos);
                     BufferedImage megaTile = getTileOfFile(xpos, ypos, width, height);
-
+                    LOGGER.info("megaTile create - start tiling");
                     // stitch
-                    BufferedImage tile = writeTiles(zout, megaTile, x, y, imageZoomLevels);
+                    BufferedImage tile = writeTiles(zout, megaTile, x, y, imageZoomLevels, zoomFactor);
                     stichTiles(lastPhaseImage, tile, x * TILE_SIZE, y * TILE_SIZE);
                 }
 
             lastPhaseImage = scaleBufferedImage(lastPhaseImage);
             int lastPhaseZoomLevels = getZoomLevels(lastPhaseImage.getWidth(), lastPhaseImage.getHeight());
-            writeTiles(zout, lastPhaseImage, 0, 0, lastPhaseZoomLevels);
+            writeTiles(zout, lastPhaseImage, 0, 0, lastPhaseZoomLevels, 0);
             zout.close();
         } finally {
             // do we need to set the reader and writer to null?? like setImageReader(null) explicitly
             getImageReader().dispose();
-            getImageWriter().dispose();
         }
         return getImageProperties();
     }
@@ -114,8 +118,7 @@ public class MCRMemSaveImage extends MCRImage {
             setImageHeight(imageReader.getHeight(0));
             setImageWidth(imageReader.getWidth(0));
         } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            LOGGER.error(e);
         }
     }
 
@@ -125,30 +128,29 @@ public class MCRMemSaveImage extends MCRImage {
         return stitchImage;
     }
 
-    private BufferedImage writeTiles(ZipOutputStream zout, BufferedImage megaTile, int x, int y, int imageZoomLevels) throws IOException {
+    private BufferedImage writeTiles(ZipOutputStream zout, BufferedImage megaTile, int x, int y, int imageZoomLevels, int zoomFactor) throws IOException {
         int tWidth = megaTile.getWidth();
         int tHeight = megaTile.getHeight();
         BufferedImage tile = null;
         int txCount = (int) Math.ceil((float) tWidth / (float) TILE_SIZE);
         int tyCount = (int) Math.ceil((float) tHeight / (float) TILE_SIZE);
-        int zoomFactor = (int) Math.pow(2, imageZoomLevels - 1);
         for (int tx = 0; tx < txCount; tx++)
             for (int ty = 0; ty < tyCount; ty++) {
                 tile = getTileOfImage(megaTile, tx, ty);
-                int realX = zoomFactor * x + tx;
-                int realY = zoomFactor * y + ty;
-                writeTile(zout, getImageWriter(), tile, realX, realY, imageZoomLevels);
+                int realX = (zoomFactor * x) + tx;
+                int realY = (zoomFactor * y) + ty;
+                writeTile(zout, tile, realX, realY, imageZoomLevels);
             }
         if (Math.max(tWidth, tHeight) > TILE_SIZE) {
             tile = scaleBufferedImage(megaTile);
-            return writeTiles(zout, tile, x, y, imageZoomLevels - 1);
+            return writeTiles(zout, tile, x, y, imageZoomLevels - 1, zoomFactor / 2);
         }
         return tile;
     }
 
     private BufferedImage getTileOfImage(BufferedImage megaTile, int x, int y) {
-        int tileWidth = Math.min(megaTile.getWidth() - TILE_SIZE * x, TILE_SIZE);
-        int tileHeight = Math.min(megaTile.getHeight() - TILE_SIZE * y, TILE_SIZE);
+        int tileWidth = Math.min(megaTile.getWidth() - (TILE_SIZE * x), TILE_SIZE);
+        int tileHeight = Math.min(megaTile.getHeight() - (TILE_SIZE * y), TILE_SIZE);
         if (tileWidth != 0 && tileHeight != 0) {
             return megaTile.getSubimage(x * TILE_SIZE, y * TILE_SIZE, tileWidth, tileHeight);
         }
@@ -174,13 +176,10 @@ public class MCRMemSaveImage extends MCRImage {
             reader.setInput(iis, false);
             return reader;
         } catch (FileNotFoundException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            LOGGER.error(e);
         } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            LOGGER.error(e);
         }
-
         return null;
     }
 
