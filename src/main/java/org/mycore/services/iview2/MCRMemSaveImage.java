@@ -73,7 +73,7 @@ public class MCRMemSaveImage extends MCRImage {
             int redHeight = getImageHeight() / (MEGA_TILE_SIZE / TILE_SIZE);
             ImageTypeSpecifier imageType = imageReader.getImageTypes(0).next();
             int bufferedImageType = imageType.getBufferedImageType();
-            if(bufferedImageType == BufferedImage.TYPE_CUSTOM)
+            if (bufferedImageType == BufferedImage.TYPE_CUSTOM)
                 bufferedImageType = BufferedImage.TYPE_INT_RGB;
             BufferedImage lastPhaseImage = new BufferedImage(redWidth, redHeight, bufferedImageType);
             int xcount = (int) Math.ceil((float) getImageWidth() / (float) MEGA_TILE_SIZE);
@@ -83,7 +83,7 @@ public class MCRMemSaveImage extends MCRImage {
 
             for (int x = 0; x < xcount; x++)
                 for (int y = 0; y < ycount; y++) {
-                    LOGGER.info("create new mega tile (" + x + "," + y + ")" );
+                    LOGGER.info("create new mega tile (" + x + "," + y + ")");
                     int xpos = x * MEGA_TILE_SIZE;
                     int width = Math.min(MEGA_TILE_SIZE, getImageWidth() - xpos);
                     int ypos = y * MEGA_TILE_SIZE;
@@ -94,10 +94,11 @@ public class MCRMemSaveImage extends MCRImage {
                     BufferedImage tile = writeTiles(zout, megaTile, x, y, imageZoomLevels, zoomFactor);
                     stichTiles(lastPhaseImage, tile, x * TILE_SIZE, y * TILE_SIZE);
                 }
-
-            lastPhaseImage = scaleBufferedImage(lastPhaseImage);
-            int lastPhaseZoomLevels = getZoomLevels(lastPhaseImage.getWidth(), lastPhaseImage.getHeight());
-            writeTiles(zout, lastPhaseImage, 0, 0, lastPhaseZoomLevels, 0);
+            if (Math.max(lastPhaseImage.getHeight(), lastPhaseImage.getWidth()) > TILE_SIZE) {
+                lastPhaseImage = scaleBufferedImage(lastPhaseImage);
+                int lastPhaseZoomLevels = getZoomLevels(lastPhaseImage.getWidth(), lastPhaseImage.getHeight());
+                writeTiles(zout, lastPhaseImage, 0, 0, lastPhaseZoomLevels, 0);
+            }
             zout.close();
         } finally {
             // do we need to set the reader and writer to null?? like setImageReader(null) explicitly
@@ -128,7 +129,8 @@ public class MCRMemSaveImage extends MCRImage {
         return stitchImage;
     }
 
-    private BufferedImage writeTiles(ZipOutputStream zout, BufferedImage megaTile, int x, int y, int imageZoomLevels, int zoomFactor) throws IOException {
+    private BufferedImage writeTiles(ZipOutputStream zout, BufferedImage megaTile, int x, int y, int imageZoomLevels, int zoomFactor)
+            throws IOException {
         int tWidth = megaTile.getWidth();
         int tHeight = megaTile.getHeight();
         BufferedImage tile = null;
