@@ -86,8 +86,6 @@ public class MCRImage {
 
     private ImageWriter imageWriter;
 
-    private String encoder;
-    
     private static JPEGImageWriteParam imageWriteParam;
     static {
         imageWriteParam = new JPEGImageWriteParam(Locale.getDefault());
@@ -104,9 +102,8 @@ public class MCRImage {
         this.imageFile = file;
         this.derivate = derivateID;
         this.imagePath = imagePath;
-        this.encoder = System.getProperty("JPEGEncoder","jai");
         setImageWriter(createImageWriter());
-        LOGGER.info("MCRImage initialized, using JPEGEncoder: "+this.encoder);
+        LOGGER.info("MCRImage initialized");
     }
 
     public static MCRImage getInstance(File file, String derivateID, String imagePath) {
@@ -186,13 +183,11 @@ public class MCRImage {
     protected void writeTile(ZipOutputStream zout, BufferedImage tile, int x, int y, int z) throws IOException {
         if (tile != null) {
             try {
-                ZipEntry ze = new ZipEntry(new StringBuilder(Integer.toString(z)).append('/').append(y).append('/').append(x).append(".jpg")
-                        .toString());
+                ZipEntry ze = new ZipEntry(new StringBuilder(Integer.toString(z)).append('/').append(y).append('/').append(x)
+                        .append(".jpg").toString());
                 zout.putNextEntry(ze);
-                if(encoder.equalsIgnoreCase("imageIO"))
-                    writeImageIoTile(zout, tile, x, y, z);
-                else
-                    writeJAITile(zout, tile, x, y, z);
+                writeImageIoTile(zout, tile, x, y, z);
+                imageTilesCount.incrementAndGet();
             } finally {
                 zout.closeEntry();
             }
@@ -207,7 +202,6 @@ public class MCRImage {
             //tile = addWatermark(scaleBufferedImage(tile));        
             IIOImage iioImage = new IIOImage(tile, null, null);
             imageWriter.write(null, iioImage, imageWriteParam);
-            imageTilesCount.incrementAndGet();
         } finally {
             imageWriter.reset();
             imageOutputStream.close();
@@ -219,7 +213,6 @@ public class MCRImage {
         jpegParam.setQuality(0.75f);
         ImageEncoder jpegEncoder = ImageCodec.createImageEncoder("JPEG", zout, jpegParam);
         jpegEncoder.encode(tile);
-        imageTilesCount.incrementAndGet();
     }
 
     protected BufferedImage scaleBufferedImage(BufferedImage image) {
