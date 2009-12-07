@@ -104,9 +104,9 @@ public class MCRImage {
         this.imageFile = file;
         this.derivate = derivateID;
         this.imagePath = imagePath;
-        this.encoder = System.getProperty("JPEGEncoder");
+        this.encoder = System.getProperty("JPEGEncoder","jai");
         setImageWriter(createImageWriter());
-        LOGGER.info("MCRImage initialized");
+        LOGGER.info("MCRImage initialized, using JPEGEncoder: "+this.encoder);
     }
 
     public static MCRImage getInstance(File file, String derivateID, String imagePath) {
@@ -189,7 +189,7 @@ public class MCRImage {
                 ZipEntry ze = new ZipEntry(new StringBuilder(Integer.toString(z)).append('/').append(y).append('/').append(x).append(".jpg")
                         .toString());
                 zout.putNextEntry(ze);
-                if(encoder != null && encoder.equals("imageIo"))
+                if(encoder.equalsIgnoreCase("imageIO"))
                     writeImageIoTile(zout, tile, x, y, z);
                 else
                     writeJAITile(zout, tile, x, y, z);
