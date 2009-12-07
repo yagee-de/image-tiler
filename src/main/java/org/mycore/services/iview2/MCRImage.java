@@ -95,12 +95,16 @@ public class MCRImage {
         imageWriteParam.setCompressionQuality(0.75f);
     }
 
-    public MCRImage(File file, String derivateID, String imagePath) {
+    protected MCRImage(File file, String derivateID, String imagePath) {
         this.imageFile = file;
         this.derivate = derivateID;
         this.imagePath = imagePath;
         setImageWriter(createImageWriter());
         LOGGER.info("MCRImage initialized");
+    }
+
+    public static MCRImage getInstance(File file, String derivateID, String imagePath) {
+        return new MCRMemSaveImage(file, derivateID, imagePath);
     }
 
     /**
@@ -159,7 +163,7 @@ public class MCRImage {
     protected ImageWriter getImageWriter() {
         return imageWriter;
     }
-    
+
     protected ImageWriter createImageWriter() {
         ImageWriter imageWriter = ImageIO.getImageWritersBySuffix("jpeg").next();
         return imageWriter;
@@ -173,8 +177,7 @@ public class MCRImage {
         return zout;
     }
 
-    protected void writeTile(ZipOutputStream zout, ImageWriter imageWriter, BufferedImage tile, int x,
-            int y, int z) throws IOException {
+    protected void writeTile(ZipOutputStream zout, ImageWriter imageWriter, BufferedImage tile, int x, int y, int z) throws IOException {
         if (tile != null) {
             ZipEntry ze = new ZipEntry(new StringBuilder(Integer.toString(z)).append('/').append(y).append('/').append(x).append(".jpg")
                     .toString());
