@@ -52,42 +52,55 @@ public class MCRMemSaveImage extends MCRImage {
 
     private static final short TILE_SIZE_FACTOR = (short) (Math.log(TILE_SIZE) / LOG_2);
 
-    private static int ZOOM_LEVEL_AT_A_TIME = 4;
+    private short zoomLevelPerStep;
 
-    protected static int MEGA_TILE_SIZE = MCRImage.TILE_SIZE * (int) Math.pow(2, ZOOM_LEVEL_AT_A_TIME); //4096x4096
+    protected int megaTileSize;
 
     private ImageReader imageReader;
+
+    private void setZoomLevelPerStep(short zoomLevel) {
+        this.zoomLevelPerStep = zoomLevel;
+        megaTileSize = MCRImage.TILE_SIZE * (int) Math.pow(2, zoomLevelPerStep); //4096x4096 if 4
+    }
+
+    private short getZoomLevelPerStep(int width, int height) {
+        int zoomLevels = getZoomLevels(width, height);
+        return (short) Math.ceil(zoomLevels / 2d);
+    }
 
     public MCRMemSaveImage(File file, String derivateID, String imagePath) {
         super(file, derivateID, imagePath);
         setImageReader(createImageReader());
         setImageSize(getImageReader());
+        short zoomLevelAtATime = getZoomLevelPerStep(getImageWidth(), getImageHeight());
+        setZoomLevelPerStep(zoomLevelAtATime);
+        LOGGER.info("Using mega tile size of " + megaTileSize + "px");
     }
 
     @Override
     public MCRTiledPictureProps tile() throws IOException {
         try {
             ZipOutputStream zout = getZipOutputStream();
-            setImageZoomLevels(getZoomLevels(getImageHeight(), getImageWidth()));
-            int redWidth = getImageWidth() / (MEGA_TILE_SIZE / TILE_SIZE);
-            int redHeight = getImageHeight() / (MEGA_TILE_SIZE / TILE_SIZE);
+            setImageZoomLevels(getZoomLevels(getImageWidth(), getImageHeight()));
+            int redWidth = getImageWidth() / (megaTileSize / TILE_SIZE);
+            int redHeight = getImageHeight() / (megaTileSize / TILE_SIZE);
             ImageTypeSpecifier imageType = imageReader.getImageTypes(0).next();
             int bufferedImageType = imageType.getBufferedImageType();
             if (bufferedImageType == BufferedImage.TYPE_CUSTOM)
                 bufferedImageType = BufferedImage.TYPE_INT_RGB;
             BufferedImage lastPhaseImage = new BufferedImage(redWidth, redHeight, bufferedImageType);
-            int xcount = (int) Math.ceil((float) getImageWidth() / (float) MEGA_TILE_SIZE);
-            int ycount = (int) Math.ceil((float) getImageHeight() / (float) MEGA_TILE_SIZE);
+            int xcount = (int) Math.ceil((float) getImageWidth() / (float) megaTileSize);
+            int ycount = (int) Math.ceil((float) getImageHeight() / (float) megaTileSize);
             int imageZoomLevels = getImageZoomLevels();
-            int zoomFactor = MEGA_TILE_SIZE / TILE_SIZE;
+            int zoomFactor = megaTileSize / TILE_SIZE;
 
             for (int x = 0; x < xcount; x++)
                 for (int y = 0; y < ycount; y++) {
                     LOGGER.info("create new mega tile (" + x + "," + y + ")");
-                    int xpos = x * MEGA_TILE_SIZE;
-                    int width = Math.min(MEGA_TILE_SIZE, getImageWidth() - xpos);
-                    int ypos = y * MEGA_TILE_SIZE;
-                    int height = Math.min(MEGA_TILE_SIZE, getImageHeight() - ypos);
+                    int xpos = x * megaTileSize;
+                    int width = Math.min(megaTileSize, getImageWidth() - xpos);
+                    int ypos = y * megaTileSize;
+                    int height = Math.min(megaTileSize, getImageHeight() - ypos);
                     BufferedImage megaTile = getTileOfFile(xpos, ypos, width, height);
                     LOGGER.info("megaTile create - start tiling");
                     // stitch
@@ -96,7 +109,7 @@ public class MCRMemSaveImage extends MCRImage {
                 }
             if (Math.max(lastPhaseImage.getHeight(), lastPhaseImage.getWidth()) > TILE_SIZE) {
                 lastPhaseImage = scaleBufferedImage(lastPhaseImage);
-                int lastPhaseZoomLevels = getZoomLevels(lastPhaseImage.getWidth(), lastPhaseImage.getHeight());
+                int lastPhaseZoomLevels = getZoomLevels(lastPhaseImage.getHeight(), lastPhaseImage.getWidth());
                 writeTiles(zout, lastPhaseImage, 0, 0, lastPhaseZoomLevels, 0);
             }
             zout.close();
@@ -159,7 +172,7 @@ public class MCRMemSaveImage extends MCRImage {
         return null;
     }
 
-    private static short getZoomLevels(int imageHeight, int imageWidth) {
+    private static short getZoomLevels(int imageWidth, int imageHeight) {
         int maxDim = Math.max(imageHeight, imageWidth);
         short maxZoom = (short) Math.ceil(Math.log(maxDim) / LOG_2 - TILE_SIZE_FACTOR);
         return maxZoom;
