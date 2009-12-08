@@ -27,9 +27,9 @@ import java.awt.Graphics;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.util.Iterator;
 import java.util.zip.ZipOutputStream;
 
@@ -171,8 +171,8 @@ public class MCRMemSaveImage extends MCRImage {
 
     private ImageReader createImageReader() {
         try {
-            FileInputStream f = new FileInputStream(this.imageFile);
-            ImageInputStream iis = ImageIO.createImageInputStream(f);
+            RandomAccessFile raf = new RandomAccessFile(this.imageFile, "r");
+            ImageInputStream iis = ImageIO.createImageInputStream(raf);
             Iterator<ImageReader> readers = ImageIO.getImageReaders(iis);
             ImageReader reader = readers.next();
             reader.setInput(iis, false);
