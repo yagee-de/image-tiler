@@ -27,7 +27,6 @@ import java.awt.Graphics;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Iterator;
@@ -42,36 +41,32 @@ import javax.imageio.stream.ImageInputStream;
 import org.apache.log4j.Logger;
 
 /**
- * @author Thomas Scheffler (yagee) & ich!!!
- *
+ * Uses a special fast and memory saving algorithm to tile images.
+ * Upper memory usage for 4GP images is about 280 MB (was 28GB),
+ * 68GP would take up to 1.1 GB (was 476 GB) and and 1TP images 4.4 GB (was 7 TB).
+ * 
+ * @author Thomas Scheffler (yagee) & Matthias Eichner!!!
  */
-public class MCRMemSaveImage extends MCRImage {
+class MCRMemSaveImage extends MCRImage {
     private static Logger LOGGER = Logger.getLogger(MCRMemSaveImage.class);
 
     private static final double LOG_2 = Math.log(2);
 
     private static final short TILE_SIZE_FACTOR = (short) (Math.log(TILE_SIZE) / LOG_2);
 
+    private static final short MIN_STEP = 3;
+
     private short zoomLevelPerStep;
 
-    protected int megaTileSize;
+    private int megaTileSize;
 
     private ImageReader imageReader;
 
-    private void setZoomLevelPerStep(short zoomLevel) {
-        this.zoomLevelPerStep = zoomLevel;
-        megaTileSize = MCRImage.TILE_SIZE * (int) Math.pow(2, zoomLevelPerStep); //4096x4096 if 4
-    }
-
-    private short getZoomLevelPerStep(int width, int height) {
-        int zoomLevels = getZoomLevels(width, height);
-        return (short) Math.ceil(zoomLevels / 2d);
-    }
-
-    public MCRMemSaveImage(File file, String derivateID, String imagePath) {
+    public MCRMemSaveImage(File file, String derivateID, String imagePath) throws IOException {
         super(file, derivateID, imagePath);
-        setImageReader(createImageReader());
-        setImageSize(getImageReader());
+        ImageReader imageReader = createImageReader(this.imageFile);
+        setImageReader(imageReader);
+        setImageSize(imageReader);
         short zoomLevelAtATime = getZoomLevelPerStep(getImageWidth(), getImageHeight());
         setZoomLevelPerStep(zoomLevelAtATime);
         LOGGER.info("Using mega tile size of " + megaTileSize + "px");
@@ -80,15 +75,21 @@ public class MCRMemSaveImage extends MCRImage {
     @Override
     public MCRTiledPictureProps tile() throws IOException {
         try {
+            //initialize some basic variables
             ZipOutputStream zout = getZipOutputStream();
             setImageZoomLevels(getZoomLevels(getImageWidth(), getImageHeight()));
             int redWidth = getImageWidth() / (megaTileSize / TILE_SIZE);
             int redHeight = getImageHeight() / (megaTileSize / TILE_SIZE);
-            ImageTypeSpecifier imageType = imageReader.getImageTypes(0).next();
-            int bufferedImageType = imageType.getBufferedImageType();
-            if (bufferedImageType == BufferedImage.TYPE_CUSTOM)
-                bufferedImageType = BufferedImage.TYPE_INT_RGB;
-            BufferedImage lastPhaseImage = new BufferedImage(redWidth, redHeight, bufferedImageType);
+            BufferedImage lastPhaseImage = null;
+            boolean lastPhaseNeeded = Math.max(redWidth, redHeight) > TILE_SIZE;
+            if (lastPhaseNeeded) {
+                //prepare empty image for the last phase of tiling process 
+                ImageTypeSpecifier imageType = imageReader.getImageTypes(0).next();
+                int bufferedImageType = imageType.getBufferedImageType();
+                if (bufferedImageType == BufferedImage.TYPE_CUSTOM)
+                    bufferedImageType = BufferedImage.TYPE_INT_RGB;
+                lastPhaseImage = new BufferedImage(redWidth, redHeight, bufferedImageType);
+            }
             int xcount = (int) Math.ceil((float) getImageWidth() / (float) megaTileSize);
             int ycount = (int) Math.ceil((float) getImageHeight() / (float) megaTileSize);
             int imageZoomLevels = getImageZoomLevels();
@@ -105,9 +106,10 @@ public class MCRMemSaveImage extends MCRImage {
                     LOGGER.info("megaTile create - start tiling");
                     // stitch
                     BufferedImage tile = writeTiles(zout, megaTile, x, y, imageZoomLevels, zoomFactor);
-                    stichTiles(lastPhaseImage, tile, x * TILE_SIZE, y * TILE_SIZE);
+                    if (lastPhaseNeeded)
+                        stichTiles(lastPhaseImage, tile, x * TILE_SIZE, y * TILE_SIZE);
                 }
-            if (Math.max(lastPhaseImage.getHeight(), lastPhaseImage.getWidth()) > TILE_SIZE) {
+            if (lastPhaseNeeded) {
                 lastPhaseImage = scaleBufferedImage(lastPhaseImage);
                 int lastPhaseZoomLevels = getZoomLevels(lastPhaseImage.getHeight(), lastPhaseImage.getWidth());
                 writeTiles(zout, lastPhaseImage, 0, 0, lastPhaseZoomLevels, 0);
@@ -136,7 +138,7 @@ public class MCRMemSaveImage extends MCRImage {
         }
     }
 
-    public BufferedImage stichTiles(BufferedImage stitchImage, BufferedImage tileImage, int x, int y) {
+    private BufferedImage stichTiles(BufferedImage stitchImage, BufferedImage tileImage, int x, int y) {
         Graphics graphics = stitchImage.getGraphics();
         graphics.drawImage(tileImage, x, y, null);
         return stitchImage;
@@ -163,7 +165,27 @@ public class MCRMemSaveImage extends MCRImage {
         return tile;
     }
 
-    private BufferedImage getTileOfImage(BufferedImage megaTile, int x, int y) {
+    private void setZoomLevelPerStep(short zoomLevel) {
+        this.zoomLevelPerStep = zoomLevel;
+        megaTileSize = MCRImage.TILE_SIZE * (int) Math.pow(2, zoomLevelPerStep); //4096x4096 if 4
+    }
+
+    private ImageReader getImageReader() {
+        return imageReader;
+    }
+
+    private BufferedImage getTileOfFile(int x, int y, int width, int height) throws IOException {
+        ImageReadParam param = getImageReader().getDefaultReadParam();
+        Rectangle srcRegion = new Rectangle(x, y, width, height);
+        param.setSourceRegion(srcRegion);
+        return getImageReader().read(0, param);
+    }
+
+    private void setImageReader(ImageReader reader) {
+        this.imageReader = reader;
+    }
+
+    private static BufferedImage getTileOfImage(BufferedImage megaTile, int x, int y) {
         int tileWidth = Math.min(megaTile.getWidth() - (TILE_SIZE * x), TILE_SIZE);
         int tileHeight = Math.min(megaTile.getHeight() - (TILE_SIZE * y), TILE_SIZE);
         if (tileWidth != 0 && tileHeight != 0) {
@@ -178,39 +200,18 @@ public class MCRMemSaveImage extends MCRImage {
         return maxZoom;
     }
 
-    private ImageReader getImageReader() {
-        return imageReader;
+    private static short getZoomLevelPerStep(int width, int height) {
+        int zoomLevels = getZoomLevels(width, height);
+        return (short) Math.max(MIN_STEP, (int) Math.ceil(zoomLevels / 2d));
     }
 
-    private ImageReader createImageReader() {
-        try {
-            RandomAccessFile raf = new RandomAccessFile(this.imageFile, "r");
-            ImageInputStream iis = ImageIO.createImageInputStream(raf);
-            Iterator<ImageReader> readers = ImageIO.getImageReaders(iis);
-            ImageReader reader = readers.next();
-            reader.setInput(iis, false);
-            return reader;
-        } catch (FileNotFoundException e) {
-            LOGGER.error(e);
-        } catch (IOException e) {
-            LOGGER.error(e);
-        }
-        return null;
-    }
-
-    protected BufferedImage getTileOfFile(int x, int y, int width, int height) throws IOException {
-        ImageReadParam param = getImageReader().getDefaultReadParam();
-        //        int xDim = Math.min(width, this.imageWidth - x);
-        //        int yDim = Math.min(height, this.imageHeight - y);
-        //        Rectangle srcRegion = new Rectangle(x, y, xDim, yDim);
-
-        Rectangle srcRegion = new Rectangle(x, y, width, height);
-        param.setSourceRegion(srcRegion);
-        return getImageReader().read(0, param);
-    }
-
-    private void setImageReader(ImageReader reader) {
-        this.imageReader = reader;
+    private static ImageReader createImageReader(File imageFile) throws IOException {
+        RandomAccessFile raf = new RandomAccessFile(imageFile, "r");
+        ImageInputStream iis = ImageIO.createImageInputStream(raf);
+        Iterator<ImageReader> readers = ImageIO.getImageReaders(iis);
+        ImageReader reader = readers.next();
+        reader.setInput(iis, false);
+        return reader;
     }
 
 }

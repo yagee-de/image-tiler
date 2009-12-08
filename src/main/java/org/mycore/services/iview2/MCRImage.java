@@ -106,7 +106,7 @@ public class MCRImage {
         LOGGER.info("MCRImage initialized");
     }
 
-    public static MCRImage getInstance(File file, String derivateID, String imagePath) {
+    public static MCRImage getInstance(File file, String derivateID, String imagePath) throws IOException {
         return new MCRMemSaveImage(file, derivateID, imagePath);
     }
 
