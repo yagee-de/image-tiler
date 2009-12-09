@@ -178,7 +178,16 @@ class MCRMemSaveImage extends MCRImage {
         ImageReadParam param = getImageReader().getDefaultReadParam();
         Rectangle srcRegion = new Rectangle(x, y, width, height);
         param.setSourceRegion(srcRegion);
-        return getImageReader().read(0, param);
+        BufferedImage tile = getImageReader().read(0, param);
+        // handle images with 32 and more bits
+        if (tile.getColorModel().getPixelSize() > 24) {
+            // convert to 24 bit
+            LOGGER.info("Converting image to 24 bit color depth");
+            BufferedImage newTile = new BufferedImage(tile.getWidth(), tile.getHeight(), BufferedImage.TYPE_INT_RGB);
+            newTile.createGraphics().drawImage(tile, 0, 0, tile.getWidth(), tile.getHeight(), null);
+            tile = newTile;
+        }
+        return tile;
     }
 
     private void setImageReader(ImageReader reader) {
