@@ -23,6 +23,8 @@
  **/
 package org.mycore.services.iview2;
 
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.awt.image.RenderedImage;
 import java.io.BufferedInputStream;
@@ -217,21 +219,16 @@ public class MCRImage {
 
     protected BufferedImage scaleBufferedImage(BufferedImage image) {
         LOGGER.info("Scaling image...");
-        BufferedImage scaled;
-        int width = image.getWidth() / 2;
-        int height = image.getHeight() / 2;
-        if (image.getType() == 0) {
-            if (image.getColorModel().getPixelSize() > 8) {
-                scaled = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
-            } else {
-                scaled = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_GRAY);
-            }
-        } else {
-            scaled = new BufferedImage(width, height, image.getType());
-        }
-        scaled.createGraphics().drawImage(image, 0, 0, width, height, null);
+        int width = image.getWidth();
+        int height = image.getHeight();
+        BufferedImage bicubic = new BufferedImage(width/2, height/2, image.getType());
+        Graphics2D bg = bicubic.createGraphics();
+        bg.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        bg.scale(0.5, 0.5);
+        bg.drawImage(image, 0, 0, null);
+        bg.dispose();
         LOGGER.info("Scaling done: " + width + "x" + height);
-        return scaled;
+        return bicubic;
     }
 
     private BufferedImage loadImage() throws IOException {
