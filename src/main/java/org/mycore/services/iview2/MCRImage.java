@@ -221,7 +221,9 @@ public class MCRImage {
         LOGGER.info("Scaling image...");
         int width = image.getWidth();
         int height = image.getHeight();
-        BufferedImage bicubic = new BufferedImage(width/2, height/2, image.getType());
+        int newWidth = (int) Math.ceil((double) width / 2d);
+        int newHeight = (int) Math.ceil((double) height / 2d);
+        BufferedImage bicubic = new BufferedImage(newWidth, newHeight, image.getType());
         Graphics2D bg = bicubic.createGraphics();
         bg.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
         bg.scale(0.5, 0.5);
