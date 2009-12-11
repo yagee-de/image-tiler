@@ -114,6 +114,7 @@ class MCRMemSaveImage extends MCRImage {
                 int lastPhaseZoomLevels = getZoomLevels(lastPhaseImage.getHeight(), lastPhaseImage.getWidth());
                 writeTiles(zout, lastPhaseImage, 0, 0, lastPhaseZoomLevels, 0);
             }
+            writeMetaData(zout);
             zout.close();
         } finally {
             // do we need to set the reader and writer to null?? like setImageReader(null) explicitly

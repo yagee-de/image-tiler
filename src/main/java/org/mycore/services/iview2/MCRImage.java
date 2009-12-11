@@ -306,7 +306,7 @@ public class MCRImage {
 
     }
 
-    private void writeMetaData(ZipOutputStream zout) throws IOException {
+    protected void writeMetaData(ZipOutputStream zout) throws IOException {
         ZipEntry ze = new ZipEntry("imageinfo.xml");
         zout.putNextEntry(ze);
         try {
