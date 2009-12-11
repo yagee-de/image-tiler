@@ -223,7 +223,10 @@ public class MCRImage {
         int height = image.getHeight();
         int newWidth = (int) Math.ceil((double) width / 2d);
         int newHeight = (int) Math.ceil((double) height / 2d);
-        BufferedImage bicubic = new BufferedImage(newWidth, newHeight, image.getType());
+        int imageType = image.getType();
+        if (imageType == BufferedImage.TYPE_CUSTOM)
+            imageType = BufferedImage.TYPE_INT_RGB;
+        BufferedImage bicubic = new BufferedImage(newWidth, newHeight, imageType);
         Graphics2D bg = bicubic.createGraphics();
         bg.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
         bg.scale(0.5, 0.5);
