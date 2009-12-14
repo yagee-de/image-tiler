@@ -26,6 +26,7 @@ package org.mycore.services.iview2;
 import java.awt.Graphics;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
+import java.awt.image.ColorModel;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -175,12 +176,21 @@ class MCRMemSaveImage extends MCRImage {
         return imageReader;
     }
 
-    private BufferedImage getTileOfFile(int x, int y, int width, int height) throws IOException {
+    protected BufferedImage getTileOfFile(int x, int y, int width, int height) throws IOException {
         ImageReadParam param = getImageReader().getDefaultReadParam();
         Rectangle srcRegion = new Rectangle(x, y, width, height);
         param.setSourceRegion(srcRegion);
+        
+        ImageTypeSpecifier typeToUse = null;
+        for (Iterator i = getImageReader().getImageTypes(0); i.hasNext();) {
+            ImageTypeSpecifier type = (ImageTypeSpecifier) i.next();
+            if (type.getColorModel().getColorSpace().isCS_sRGB())
+                typeToUse = type;
+        }
+        if (typeToUse != null)
+            param.setDestinationType(typeToUse);
+        
         BufferedImage tile = getImageReader().read(0, param);
-        // handle images with 32 and more bits
         if (tile.getColorModel().getPixelSize() > 24) {
             // convert to 24 bit
             LOGGER.info("Converting image to 24 bit color depth");
@@ -188,6 +198,9 @@ class MCRMemSaveImage extends MCRImage {
             newTile.createGraphics().drawImage(tile, 0, 0, tile.getWidth(), tile.getHeight(), null);
             tile = newTile;
         }
+        
+        
+        
         return tile;
     }
 
