@@ -26,7 +26,6 @@ package org.mycore.services.iview2;
 import java.awt.Graphics;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
-import java.awt.image.ColorModel;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
