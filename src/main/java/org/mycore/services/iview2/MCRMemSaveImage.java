@@ -180,15 +180,17 @@ class MCRMemSaveImage extends MCRImage {
         ImageReadParam param = getImageReader().getDefaultReadParam();
         Rectangle srcRegion = new Rectangle(x, y, width, height);
         param.setSourceRegion(srcRegion);
-        
+
+        //BugFix for bug reported at: http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4705399
         ImageTypeSpecifier typeToUse = null;
-        for (Iterator i = getImageReader().getImageTypes(0); i.hasNext();) {
-            ImageTypeSpecifier type = (ImageTypeSpecifier) i.next();
+        for (Iterator<ImageTypeSpecifier> i = getImageReader().getImageTypes(0); i.hasNext();) {
+            ImageTypeSpecifier type = i.next();
             if (type.getColorModel().getColorSpace().isCS_sRGB())
                 typeToUse = type;
         }
         if (typeToUse != null)
             param.setDestinationType(typeToUse);
+        //End Of BugFix
         
         BufferedImage tile = getImageReader().read(0, param);
         if (tile.getColorModel().getPixelSize() > 24) {
@@ -198,9 +200,7 @@ class MCRMemSaveImage extends MCRImage {
             newTile.createGraphics().drawImage(tile, 0, 0, tile.getWidth(), tile.getHeight(), null);
             tile = newTile;
         }
-        
-        
-        
+
         return tile;
     }
 
