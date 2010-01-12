@@ -307,17 +307,17 @@ public class MCRImage {
     }
 
     protected void writeMetaData(ZipOutputStream zout) throws IOException {
-        ZipEntry ze = new ZipEntry("imageinfo.xml");
+        ZipEntry ze = new ZipEntry(MCRTiledPictureProps.IMAGEINFO_XML);
         zout.putNextEntry(ze);
         try {
             Element rootElement = new Element("imageinfo");
             Document imageInfo = new Document(rootElement);
-            rootElement.setAttribute("derivate", derivate);
-            rootElement.setAttribute("path", imagePath);
-            rootElement.setAttribute("tiles", imageTilesCount.toString());
-            rootElement.setAttribute("width", Integer.toString(getImageWidth()));
-            rootElement.setAttribute("height", Integer.toString(getImageHeight()));
-            rootElement.setAttribute("zoomLevel", Integer.toString(getImageZoomLevels()));
+            rootElement.setAttribute(MCRTiledPictureProps.PROP_DERIVATE, derivate);
+            rootElement.setAttribute(MCRTiledPictureProps.PROP_PATH, imagePath);
+            rootElement.setAttribute(MCRTiledPictureProps.PROP_TILES, imageTilesCount.toString());
+            rootElement.setAttribute(MCRTiledPictureProps.PROP_WIDTH, Integer.toString(getImageWidth()));
+            rootElement.setAttribute(MCRTiledPictureProps.PROP_HEIGHT, Integer.toString(getImageHeight()));
+            rootElement.setAttribute(MCRTiledPictureProps.PROP_ZOOM_LEVEL, Integer.toString(getImageZoomLevels()));
             XMLOutputter xout = new XMLOutputter(Format.getCompactFormat());
             xout.output(imageInfo, zout);
         } finally {
