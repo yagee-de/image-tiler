@@ -80,6 +80,7 @@ class MCRMemSaveImage extends MCRImage {
             setImageZoomLevels(getZoomLevels(getImageWidth(), getImageHeight()));
             int redWidth = getImageWidth() / (megaTileSize / TILE_SIZE);
             int redHeight = getImageHeight() / (megaTileSize / TILE_SIZE);
+            int stopOnZoomLevel=getZoomLevels(redWidth, redHeight);
             BufferedImage lastPhaseImage = null;
             boolean lastPhaseNeeded = Math.max(redWidth, redHeight) > TILE_SIZE;
             if (lastPhaseNeeded) {
@@ -105,14 +106,14 @@ class MCRMemSaveImage extends MCRImage {
                     BufferedImage megaTile = getTileOfFile(xpos, ypos, width, height);
                     LOGGER.info("megaTile create - start tiling");
                     // stitch
-                    BufferedImage tile = writeTiles(zout, megaTile, x, y, imageZoomLevels, zoomFactor);
+                    BufferedImage tile = writeTiles(zout, megaTile, x, y, imageZoomLevels, zoomFactor, stopOnZoomLevel);
                     if (lastPhaseNeeded)
                         stichTiles(lastPhaseImage, tile, x * TILE_SIZE, y * TILE_SIZE);
                 }
             if (lastPhaseNeeded) {
                 lastPhaseImage = scaleBufferedImage(lastPhaseImage);
                 int lastPhaseZoomLevels = getZoomLevels(lastPhaseImage.getHeight(), lastPhaseImage.getWidth());
-                writeTiles(zout, lastPhaseImage, 0, 0, lastPhaseZoomLevels, 0);
+                writeTiles(zout, lastPhaseImage, 0, 0, lastPhaseZoomLevels, 0, 0);
             }
             writeMetaData(zout);
             zout.close();
@@ -145,8 +146,8 @@ class MCRMemSaveImage extends MCRImage {
         return stitchImage;
     }
 
-    private BufferedImage writeTiles(ZipOutputStream zout, BufferedImage megaTile, int x, int y, int imageZoomLevels, int zoomFactor)
-            throws IOException {
+    private BufferedImage writeTiles(ZipOutputStream zout, BufferedImage megaTile, int x, int y, int imageZoomLevels, int zoomFactor,
+            int stopOnZoomLevel) throws IOException {
         int tWidth = megaTile.getWidth();
         int tHeight = megaTile.getHeight();
         BufferedImage tile = null;
@@ -159,9 +160,9 @@ class MCRMemSaveImage extends MCRImage {
                 int realY = (zoomFactor * y) + ty;
                 writeTile(zout, tile, realX, realY, imageZoomLevels);
             }
-        if (imageZoomLevels > 1) {
+        if (imageZoomLevels > stopOnZoomLevel) {
             tile = scaleBufferedImage(megaTile);
-            return writeTiles(zout, tile, x, y, imageZoomLevels - 1, zoomFactor / 2);
+            return writeTiles(zout, tile, x, y, imageZoomLevels - 1, zoomFactor / 2, stopOnZoomLevel);
         }
         return tile;
     }
