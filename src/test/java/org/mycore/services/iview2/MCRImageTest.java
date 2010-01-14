@@ -59,13 +59,7 @@ public class MCRImageTest extends TestCase {
             assertEquals(entry.getKey() + ": Metadata tile count does not match stored tile count.", props.countTiles, tilesCount);
             int x = props.width;
             int y = props.height;
-            int tiles = 1;
-            while (x >= MCRImage.TILE_SIZE || y >= MCRImage.TILE_SIZE) {
-                tiles += Math.ceil(x / (double) MCRImage.TILE_SIZE) * Math.ceil(y / (double) MCRImage.TILE_SIZE);
-                x = (int) Math.ceil(x / 2d);
-                y = (int) Math.ceil(y / 2d);
-            }
-            assertEquals(entry.getKey() + ": Calculated tile count does not match stored tile count.", tiles, tilesCount);
+            assertEquals(entry.getKey() + ": Calculated tile count does not match stored tile count.", MCRImage.getTileCount(x, y), tilesCount);
         }
     }
 }

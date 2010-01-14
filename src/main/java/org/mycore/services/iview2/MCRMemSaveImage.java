@@ -50,10 +50,6 @@ import org.apache.log4j.Logger;
 class MCRMemSaveImage extends MCRImage {
     private static Logger LOGGER = Logger.getLogger(MCRMemSaveImage.class);
 
-    private static final double LOG_2 = Math.log(2);
-
-    private static final short TILE_SIZE_FACTOR = (short) (Math.log(TILE_SIZE) / LOG_2);
-
     private static final short MIN_STEP = 3;
 
     private short zoomLevelPerStep;
@@ -217,12 +213,6 @@ class MCRMemSaveImage extends MCRImage {
             return megaTile.getSubimage(x * TILE_SIZE, y * TILE_SIZE, tileWidth, tileHeight);
         }
         return null;
-    }
-
-    private static short getZoomLevels(int imageWidth, int imageHeight) {
-        int maxDim = Math.max(imageHeight, imageWidth);
-        short maxZoom = (short) Math.ceil(Math.log(maxDim) / LOG_2 - TILE_SIZE_FACTOR);
-        return maxZoom;
     }
 
     private static short getZoomLevelPerStep(int width, int height) {

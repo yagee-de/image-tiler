@@ -72,6 +72,10 @@ public class MCRImage {
 
     protected static final int TILE_SIZE = 256;
 
+    private static final double LOG_2 = Math.log(2);
+
+    private static final short TILE_SIZE_FACTOR = (short) (Math.log(TILE_SIZE) / LOG_2);
+
     protected AtomicInteger imageTilesCount = new AtomicInteger();
 
     private int imageWidth;
@@ -185,8 +189,9 @@ public class MCRImage {
     protected void writeTile(ZipOutputStream zout, BufferedImage tile, int x, int y, int z) throws IOException {
         if (tile != null) {
             try {
-                ZipEntry ze = new ZipEntry(new StringBuilder(Integer.toString(z)).append('/').append(y).append('/').append(x)
-                        .append(".jpg").toString());
+                StringBuilder tileName = new StringBuilder(Integer.toString(z)).append('/').append(y).append('/').append(x)
+                        .append(".jpg");
+                ZipEntry ze = new ZipEntry(tileName.toString());
                 zout.putNextEntry(ze);
                 writeImageIoTile(zout, tile, x, y, z);
                 imageTilesCount.incrementAndGet();
@@ -359,6 +364,22 @@ public class MCRImage {
             return tileDir;
         String relPath = imagePath.substring(0, imagePath.lastIndexOf('.')) + ".iview2";
         return new File(tileDir.getAbsolutePath() + "/" + relPath);
+    }
+
+    public static short getZoomLevels(int imageWidth, int imageHeight) {
+        int maxDim = Math.max(imageHeight, imageWidth);
+        short maxZoom = (short) Math.ceil(Math.log(maxDim) / LOG_2 - TILE_SIZE_FACTOR);
+        return maxZoom;
+    }
+    
+    public static int getTileCount(int imageWidth, int imageHeight){
+        int tiles = 1;
+        while (imageWidth >= MCRImage.TILE_SIZE || imageHeight >= MCRImage.TILE_SIZE) {
+            tiles += Math.ceil(imageWidth / (double) MCRImage.TILE_SIZE) * Math.ceil(imageHeight / (double) MCRImage.TILE_SIZE);
+            imageWidth = (int) Math.ceil(imageWidth / 2d);
+            imageHeight = (int) Math.ceil(imageHeight / 2d);
+        }
+        return tiles;
     }
 
     protected void setImageWidth(int imageWidth) {
