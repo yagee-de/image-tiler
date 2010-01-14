@@ -159,7 +159,7 @@ class MCRMemSaveImage extends MCRImage {
                 int realY = (zoomFactor * y) + ty;
                 writeTile(zout, tile, realX, realY, imageZoomLevels);
             }
-        if (Math.max(tWidth, tHeight) > TILE_SIZE) {
+        if (imageZoomLevels > 1) {
             tile = scaleBufferedImage(megaTile);
             return writeTiles(zout, tile, x, y, imageZoomLevels - 1, zoomFactor / 2);
         }
