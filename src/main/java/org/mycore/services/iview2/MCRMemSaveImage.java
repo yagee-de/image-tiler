@@ -65,7 +65,7 @@ class MCRMemSaveImage extends MCRImage {
         setImageSize(imageReader);
         short zoomLevelAtATime = getZoomLevelPerStep(getImageWidth(), getImageHeight());
         setZoomLevelPerStep(zoomLevelAtATime);
-        LOGGER.info("Using mega tile size of " + megaTileSize + "px");
+        LOGGER.info("Using mega tile size of " + megaTileSize + "px for image sized " + getImageWidth() + "x" + getImageHeight());
     }
 
     @Override
@@ -74,9 +74,11 @@ class MCRMemSaveImage extends MCRImage {
             //initialize some basic variables
             ZipOutputStream zout = getZipOutputStream();
             setImageZoomLevels(getZoomLevels(getImageWidth(), getImageHeight()));
-            int redWidth = getImageWidth() / (megaTileSize / TILE_SIZE);
-            int redHeight = getImageHeight() / (megaTileSize / TILE_SIZE);
-            int stopOnZoomLevel=getZoomLevels(redWidth, redHeight);
+            int redWidth = (int) Math.ceil(getImageWidth() / (double)(megaTileSize / TILE_SIZE));
+            int redHeight = (int) Math.ceil(getImageHeight() / (double)(megaTileSize / TILE_SIZE));
+            if (LOGGER.isDebugEnabled())
+            LOGGER.debug("reduced size: " + redWidth + "x" + redHeight);
+            int stopOnZoomLevel = getZoomLevels(redWidth, redHeight);
             BufferedImage lastPhaseImage = null;
             boolean lastPhaseNeeded = Math.max(redWidth, redHeight) > TILE_SIZE;
             if (lastPhaseNeeded) {
@@ -142,8 +144,8 @@ class MCRMemSaveImage extends MCRImage {
         return stitchImage;
     }
 
-    private BufferedImage writeTiles(ZipOutputStream zout, BufferedImage megaTile, int x, int y, int imageZoomLevels, int zoomFactor,
-            int stopOnZoomLevel) throws IOException {
+    private BufferedImage writeTiles(ZipOutputStream zout, BufferedImage megaTile, int x, int y, int imageZoomLevels, int zoomFactor, int stopOnZoomLevel)
+            throws IOException {
         int tWidth = megaTile.getWidth();
         int tHeight = megaTile.getHeight();
         BufferedImage tile = null;
