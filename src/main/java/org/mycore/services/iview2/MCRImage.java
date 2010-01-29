@@ -410,4 +410,8 @@ public class MCRImage {
     private void setImageWriter(ImageWriter imageWriter) {
         this.imageWriter = imageWriter;
     }
+
+    public static int getTileSize() {
+        return TILE_SIZE;
+    }
 }
