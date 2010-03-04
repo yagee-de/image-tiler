@@ -78,11 +78,10 @@ class MCRMemSaveImage extends MCRImage {
             int redHeight = (int) Math.ceil(getImageHeight() / (double)(megaTileSize / TILE_SIZE));
             if (LOGGER.isDebugEnabled())
                 LOGGER.debug("reduced size: " + redWidth + "x" + redHeight);
-            int stopOnZoomLevel = 0;
+            int stopOnZoomLevel = getZoomLevels(redWidth, redHeight);
             BufferedImage lastPhaseImage = null;
             boolean lastPhaseNeeded = Math.max(redWidth, redHeight) > TILE_SIZE;
             if (lastPhaseNeeded) {
-                stopOnZoomLevel = getZoomLevels(redWidth, redHeight);
                 //prepare empty image for the last phase of tiling process 
                 ImageTypeSpecifier imageType = imageReader.getImageTypes(0).next();
                 int bufferedImageType = imageType.getBufferedImageType();
