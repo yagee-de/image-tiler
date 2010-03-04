@@ -369,6 +369,7 @@ public class MCRImage {
 
     public static short getZoomLevels(int imageWidth, int imageHeight) {
         int maxDim = Math.max(imageHeight, imageWidth);
+        maxDim = Math.max(maxDim, TILE_SIZE);
         short maxZoom = (short) Math.ceil(Math.log(maxDim) / LOG_2 - TILE_SIZE_FACTOR);
         return maxZoom;
     }
