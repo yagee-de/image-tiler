@@ -140,11 +140,11 @@ public class MCRImage {
                 //image = reformatImage(scale(image));
                 LOGGER.info("Writing out tiles..");
 
-                int getMaxTileY = (int) Math.ceil(image.getHeight() / TILE_SIZE);
-                int getMaxTileX = (int) Math.ceil(image.getWidth() / TILE_SIZE);
+                int getMaxTileY = (int) Math.ceil((double) image.getHeight() / TILE_SIZE);
+                int getMaxTileX = (int) Math.ceil((double) image.getWidth() / TILE_SIZE);
                 for (int y = 0; y <= getMaxTileY; y++) {
                     for (int x = 0; x <= getMaxTileX; x++) {
-                        BufferedImage tile = getTile(image, x, y, z);
+                        BufferedImage tile = getTile(image, x, y);
                         writeTile(zout, tile, x, y, z);
                     }
                 }
@@ -181,16 +181,18 @@ public class MCRImage {
     protected ZipOutputStream getZipOutputStream() throws FileNotFoundException {
         File iviewFile = getTiledFile(this.tileDir, derivate, imagePath);
         LOGGER.info("Saving tiles in " + iviewFile.getAbsolutePath());
-        iviewFile.getParentFile().mkdirs();
-        ZipOutputStream zout = new ZipOutputStream(new FileOutputStream(iviewFile));
-        return zout;
+        if (iviewFile.getParentFile().mkdirs()) {
+            ZipOutputStream zout = new ZipOutputStream(new FileOutputStream(iviewFile));
+            return zout;
+        } else {
+            throw new FileNotFoundException("Cannot create directory " + iviewFile.getParentFile());
+        }
     }
 
     protected void writeTile(ZipOutputStream zout, BufferedImage tile, int x, int y, int z) throws IOException {
         if (tile != null) {
             try {
-                StringBuilder tileName = new StringBuilder(Integer.toString(z)).append('/').append(y).append('/').append(x)
-                        .append(".jpg");
+                StringBuilder tileName = new StringBuilder(Integer.toString(z)).append('/').append(y).append('/').append(x).append(".jpg");
                 ZipEntry ze = new ZipEntry(tileName.toString());
                 zout.putNextEntry(ze);
                 writeImageIoTile(zout, tile, x, y, z);
@@ -297,7 +299,7 @@ public class MCRImage {
         return zoomLevel;
     }
 
-    private BufferedImage getTile(BufferedImage image, int x, int y, int zoom) {
+    private BufferedImage getTile(BufferedImage image, int x, int y) {
         int tileWidth = image.getWidth() - TILE_SIZE * x;
         int tileHeight = image.getHeight() - TILE_SIZE * y;
         if (tileWidth > TILE_SIZE)
@@ -362,8 +364,8 @@ public class MCRImage {
         tileDir = new File(tileDir, derivate);
         if (imagePath == null)
             return tileDir;
-        int pos=imagePath.lastIndexOf('.');
-        String relPath = imagePath.substring(0, (pos>0)?pos:imagePath.length()) + ".iview2";
+        int pos = imagePath.lastIndexOf('.');
+        String relPath = imagePath.substring(0, (pos > 0) ? pos : imagePath.length()) + ".iview2";
         return new File(tileDir.getAbsolutePath() + "/" + relPath);
     }
 
@@ -373,8 +375,8 @@ public class MCRImage {
         short maxZoom = (short) Math.ceil(Math.log(maxDim) / LOG_2 - TILE_SIZE_FACTOR);
         return maxZoom;
     }
-    
-    public static int getTileCount(int imageWidth, int imageHeight){
+
+    public static int getTileCount(int imageWidth, int imageHeight) {
         int tiles = 1;
         while (imageWidth >= MCRImage.TILE_SIZE || imageHeight >= MCRImage.TILE_SIZE) {
             tiles += Math.ceil(imageWidth / (double) MCRImage.TILE_SIZE) * Math.ceil(imageHeight / (double) MCRImage.TILE_SIZE);

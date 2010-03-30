@@ -74,8 +74,8 @@ class MCRMemSaveImage extends MCRImage {
             //initialize some basic variables
             ZipOutputStream zout = getZipOutputStream();
             setImageZoomLevels(getZoomLevels(getImageWidth(), getImageHeight()));
-            int redWidth = (int) Math.ceil(getImageWidth() / (double)(megaTileSize / TILE_SIZE));
-            int redHeight = (int) Math.ceil(getImageHeight() / (double)(megaTileSize / TILE_SIZE));
+            int redWidth = (int) Math.ceil(getImageWidth() / ((double)megaTileSize / TILE_SIZE));
+            int redHeight = (int) Math.ceil(getImageHeight() / ((double)megaTileSize / TILE_SIZE));
             if (LOGGER.isDebugEnabled())
                 LOGGER.debug("reduced size: " + redWidth + "x" + redHeight);
             int stopOnZoomLevel = getZoomLevels(redWidth, redHeight);
