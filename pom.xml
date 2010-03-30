@@ -66,6 +66,10 @@
       <optional>false</optional>
       <exclusions>
         <exclusion>
+          <groupId>javax.mail</groupId>
+          <artifactId>mail</artifactId>
+        </exclusion>
+        <exclusion>
           <groupId>com.sun.jdmk</groupId>
           <artifactId>jmxtools</artifactId>
         </exclusion>
@@ -86,11 +90,6 @@
       <optional>false</optional>
     </dependency>
     <dependency>
-      <groupId>commons-lang</groupId>
-      <artifactId>commons-lang</artifactId>
-      <version>2.4</version>
-    </dependency>
-    <dependency>
       <groupId>commons-io</groupId>
       <artifactId>commons-io</artifactId>
       <version>1.4</version>
@@ -98,7 +97,7 @@
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <version>3.8.1</version>
+      <version>4.8.1</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

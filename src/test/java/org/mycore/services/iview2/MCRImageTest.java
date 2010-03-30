@@ -1,21 +1,24 @@
 package org.mycore.services.iview2;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.zip.ZipFile;
 
-import junit.framework.TestCase;
-
 import org.apache.commons.io.FilenameUtils;
-
-public class MCRImageTest extends TestCase {
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+public class MCRImageTest {
     private HashMap<String, String> pics = new HashMap<String, String>();
 
     File tileDir;
 
-    @Override
-    protected void setUp() throws Exception {
+    @Before
+    public void setUp() throws Exception {
         pics.put("small", "src/test/resources/Bay_of_Noboto.jpg");
         pics.put("wide", "src/test/resources/labirynth_panorama_010.jpg");
         pics.put("1 pixel mega tile rest", "src/test/resources/BE_0681_0397.jpg");
@@ -23,12 +26,10 @@ public class MCRImageTest extends TestCase {
 
         tileDir = new File("target/tileDir");
         System.setProperty("java.awt.headless", "true"); 
-        super.setUp();
     }
 
-    @Override
-    protected void tearDown() throws Exception {
-        super.tearDown();
+    @After
+    public void tearDown() throws Exception {
         deleteDirectory(tileDir);
     }
 
@@ -46,6 +47,7 @@ public class MCRImageTest extends TestCase {
         return (path.delete());
     }
 
+    @Test
     public void testTiling() throws Exception {
         for (Map.Entry<String, String> entry : pics.entrySet()) {
             File file = new File(entry.getValue());
