@@ -11,6 +11,18 @@
   <artifactId>image-tiler</artifactId>
   <version>1.0-SNAPSHOT</version>
   <name>MyCoRe IView2 Image Tiler Library</name>
+  <scm>
+    <connection>scm:svn:http://server.mycore.de/svn/mycore-iview2-addons/${project.artifactId}/trunk</connection>
+    <developerConnection>scm:svn:https://server.mycore.de/svn/mycore-iview2-addons/${project.artifactId}/trunk</developerConnection>
+    <url>http://www.mycore.de/viewvc/viewvc.cgi/mycore-iview2-addons/${project.artifactId}/trunk</url>
+  </scm>
+  <distributionManagement>
+    <site>
+      <id>MyCoRe HQ</id>
+      <name>MyCoRe HQ-sites</name>
+      <url>scp://server.mycore.de/mcr/mycore.de/generated/${project.artifactId}/${project.version}</url>
+    </site>
+  </distributionManagement>
   <properties>
     <java.target.version>1.6</java.target.version>
   </properties>
@@ -34,6 +46,110 @@
     </repository>
   </repositories>
   <build>
+    <plugins>
+      <plugin>
+        <!--
+          The tutorial on http://maven.apache.org/plugins/maven-checkstyle-plugin/examples/multi-module-config.html does not work. Manually
+          extracting the checkstyle.xml file from build-tools with maven-antrun-plugin.
+        -->
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-antrun-plugin</artifactId>
+        <executions>
+          <execution>
+            <phase>pre-site</phase>
+            <goals>
+              <goal>run</goal>
+            </goals>
+            <configuration>
+              <tasks>
+                <unjar dest="target">
+                  <patternset>
+                    <include name="org/mycore/checkstyle.xml" />
+                  </patternset>
+                  <first>
+                    <path refid="maven.plugin.classpath" />
+                  </first>
+                  <filtermapper>
+                    <replacestring from="org/mycore/checkstyle.xml" to="checkstyle-configuration.xml" />
+                  </filtermapper>
+                </unjar>
+              </tasks>
+            </configuration>
+          </execution>
+          <execution>
+            <id>unpack-checkstyle-config</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>run</goal>
+            </goals>
+            <configuration>
+              <tasks>
+                <unjar dest="target">
+                  <patternset>
+                    <include name="org/mycore/checkstyle.xml" />
+                  </patternset>
+                  <first>
+                    <path refid="maven.plugin.classpath" />
+                  </first>
+                  <filtermapper>
+                    <replacestring from="org/mycore/checkstyle.xml" to="checkstyle-configuration.xml" />
+                  </filtermapper>
+                </unjar>
+              </tasks>
+            </configuration>
+          </execution>
+        </executions>
+        <dependencies>
+          <!-- specify build-tools as first plugin dependency so unpacking (see above) goes a bit faster -->
+          <dependency>
+            <groupId>org.mycore</groupId>
+            <artifactId>build-tools</artifactId>
+            <version>1.0</version>
+          </dependency>
+        </dependencies>
+      </plugin>
+      <plugin>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+        <executions>
+          <execution>
+            <phase>verify</phase>
+            <goals>
+              <goal>check</goal>
+            </goals>
+            <configuration>
+              <configLocation>${project.build.directory}/checkstyle-configuration.xml</configLocation>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <artifactId>maven-pmd-plugin</artifactId>
+        <executions>
+          <execution>
+            <phase>verify</phase>
+            <goals>
+              <goal>check</goal>
+              <goal>cpd-check</goal>
+            </goals>
+            <configuration>
+              <targetJdk>${java.target.version}</targetJdk>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>findbugs-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <phase>verify</phase>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
   </build>
   <dependencies>
     <dependency>
