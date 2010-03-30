@@ -183,7 +183,7 @@ public class MCRImage {
     protected ZipOutputStream getZipOutputStream() throws FileNotFoundException {
         File iviewFile = getTiledFile(tileDir, derivate, imagePath);
         LOGGER.info("Saving tiles in " + iviewFile.getAbsolutePath());
-        if (iviewFile.getParentFile().mkdirs()) {
+        if (iviewFile.getParentFile().exists() || iviewFile.getParentFile().mkdirs()) {
             ZipOutputStream zout = new ZipOutputStream(new FileOutputStream(iviewFile));
             return zout;
         } else {
