@@ -60,7 +60,7 @@ public class MCRTiledPictureProps {
                 zin.close();
             }
         } else {
-            LOGGER.warn("Did not find "+IMAGEINFO_XML+" in "+iviewFile.getAbsolutePath());
+            LOGGER.warn("Did not find " + IMAGEINFO_XML + " in " + iviewFile.getAbsolutePath());
             return null;
         }
     }

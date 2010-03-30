@@ -12,6 +12,7 @@ import org.apache.commons.io.FilenameUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
 public class MCRImageTest {
     private HashMap<String, String> pics = new HashMap<String, String>();
 
@@ -25,7 +26,7 @@ public class MCRImageTest {
         pics.put("extra small", "src/test/resources/5x5.jpg");
 
         tileDir = new File("target/tileDir");
-        System.setProperty("java.awt.headless", "true"); 
+        System.setProperty("java.awt.headless", "true");
     }
 
     @After
@@ -36,15 +37,15 @@ public class MCRImageTest {
     private static boolean deleteDirectory(File path) {
         if (path.exists()) {
             File[] files = path.listFiles();
-            for (int i = 0; i < files.length; i++) {
-                if (files[i].isDirectory()) {
-                    deleteDirectory(files[i]);
+            for (File file : files) {
+                if (file.isDirectory()) {
+                    deleteDirectory(file);
                 } else {
-                    files[i].delete();
+                    file.delete();
                 }
             }
         }
-        return (path.delete());
+        return path.delete();
     }
 
     @Test
@@ -65,7 +66,8 @@ public class MCRImageTest {
             assertEquals(entry.getKey() + ": Metadata tile count does not match stored tile count.", props.countTiles, tilesCount);
             int x = props.width;
             int y = props.height;
-            assertEquals(entry.getKey() + ": Calculated tile count does not match stored tile count.", MCRImage.getTileCount(x, y), tilesCount);
+            assertEquals(entry.getKey() + ": Calculated tile count does not match stored tile count.", MCRImage.getTileCount(x, y),
+                    tilesCount);
         }
     }
 }

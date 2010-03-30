@@ -42,6 +42,7 @@ import java.util.zip.ZipOutputStream;
 import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
+import javax.imageio.ImageWriteParam;
 import javax.imageio.ImageWriter;
 import javax.imageio.plugins.jpeg.JPEGImageWriteParam;
 import javax.imageio.stream.FileImageInputStream;
@@ -96,17 +97,17 @@ public class MCRImage {
     static {
         imageWriteParam = new JPEGImageWriteParam(Locale.getDefault());
         try {
-            imageWriteParam.setProgressiveMode(JPEGImageWriteParam.MODE_DEFAULT);
+            imageWriteParam.setProgressiveMode(ImageWriteParam.MODE_DEFAULT);
         } catch (UnsupportedOperationException e) {
             LOGGER.warn("Your JPEG encoder does not support progressive JPEGs.");
         }
-        imageWriteParam.setCompressionMode(JPEGImageWriteParam.MODE_EXPLICIT);
+        imageWriteParam.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
         imageWriteParam.setCompressionQuality(0.75f);
     }
 
     protected MCRImage(File file, String derivateID, String imagePath) {
-        this.imageFile = file;
-        this.derivate = derivateID;
+        imageFile = file;
+        derivate = derivateID;
         this.imagePath = imagePath;
         setImageWriter(createImageWriter());
         LOGGER.info("MCRImage initialized");
@@ -148,8 +149,9 @@ public class MCRImage {
                         writeTile(zout, tile, x, y, z);
                     }
                 }
-                if (z > 0)
+                if (z > 0) {
                     image = scaleBufferedImage(image);
+                }
             }
             imageWriter.dispose();
             //close imageOutputStream after disposing imageWriter or else application will hang
@@ -179,7 +181,7 @@ public class MCRImage {
     }
 
     protected ZipOutputStream getZipOutputStream() throws FileNotFoundException {
-        File iviewFile = getTiledFile(this.tileDir, derivate, imagePath);
+        File iviewFile = getTiledFile(tileDir, derivate, imagePath);
         LOGGER.info("Saving tiles in " + iviewFile.getAbsolutePath());
         if (iviewFile.getParentFile().mkdirs()) {
             ZipOutputStream zout = new ZipOutputStream(new FileOutputStream(iviewFile));
@@ -228,11 +230,12 @@ public class MCRImage {
         LOGGER.info("Scaling image...");
         int width = image.getWidth();
         int height = image.getHeight();
-        int newWidth = (int) Math.ceil((double) width / 2d);
-        int newHeight = (int) Math.ceil((double) height / 2d);
+        int newWidth = (int) Math.ceil(width / 2d);
+        int newHeight = (int) Math.ceil(height / 2d);
         int imageType = image.getType();
-        if (imageType == BufferedImage.TYPE_CUSTOM)
+        if (imageType == BufferedImage.TYPE_CUSTOM) {
             imageType = BufferedImage.TYPE_INT_RGB;
+        }
         BufferedImage bicubic = new BufferedImage(newWidth, newHeight, imageType);
         Graphics2D bg = bicubic.createGraphics();
         bg.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
@@ -302,10 +305,12 @@ public class MCRImage {
     private BufferedImage getTile(BufferedImage image, int x, int y) {
         int tileWidth = image.getWidth() - TILE_SIZE * x;
         int tileHeight = image.getHeight() - TILE_SIZE * y;
-        if (tileWidth > TILE_SIZE)
+        if (tileWidth > TILE_SIZE) {
             tileWidth = TILE_SIZE;
-        if (tileHeight > TILE_SIZE)
+        }
+        if (tileHeight > TILE_SIZE) {
             tileHeight = TILE_SIZE;
+        }
         if (tileWidth != 0 && tileHeight != 0) {
             return image.getSubimage(x * TILE_SIZE, y * TILE_SIZE, tileWidth, tileHeight);
         }
@@ -348,8 +353,9 @@ public class MCRImage {
      * @return tile directory of derivate if <code>imagePath</code> is null or the tile file (.iview2)
      */
     public static File getTiledFile(File tileDir, String derivate, String imagePath) {
-        if (LOGGER.isDebugEnabled())
+        if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("tileDir: " + tileDir + ", derivate: " + derivate + ", imagePath: " + imagePath);
+        }
         String[] idParts = derivate.split("_");
         for (int i = 0; i < idParts.length - 1; i++) {
             tileDir = new File(tileDir, idParts[i]);
@@ -362,10 +368,11 @@ public class MCRImage {
             tileDir = new File(tileDir, lastPart);
         }
         tileDir = new File(tileDir, derivate);
-        if (imagePath == null)
+        if (imagePath == null) {
             return tileDir;
+        }
         int pos = imagePath.lastIndexOf('.');
-        String relPath = imagePath.substring(0, (pos > 0) ? pos : imagePath.length()) + ".iview2";
+        String relPath = imagePath.substring(0, pos > 0 ? pos : imagePath.length()) + ".iview2";
         return new File(tileDir.getAbsolutePath() + "/" + relPath);
     }
 
