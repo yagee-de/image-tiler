@@ -34,6 +34,11 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+/**
+ * Provides a good test case for {@link MCRImage}.
+ * @author Thomas Scheffler (yagee)
+ *
+ */
 public class MCRImageTest {
     private final HashMap<String, String> pics = new HashMap<String, String>();
 
@@ -53,8 +58,13 @@ public class MCRImageTest {
         return path.delete();
     }
 
+    /**
+     * Sets up test.
+     * 
+     * A list of images is initialized which provides various testcases for the tiler.
+     */
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
         pics.put("small", "src/test/resources/Bay_of_Noboto.jpg");
         pics.put("wide", "src/test/resources/labirynth_panorama_010.jpg");
         pics.put("1 pixel mega tile rest", "src/test/resources/BE_0681_0397.jpg");
@@ -64,11 +74,18 @@ public class MCRImageTest {
         System.setProperty("java.awt.headless", "true");
     }
 
+    /**
+     * Tears down the testcase and removes temporary directories.
+     */
     @After
-    public void tearDown() throws Exception {
+    public void tearDown() {
         deleteDirectory(tileDir);
     }
 
+    /**
+     * Tests {@link MCRImage#tile()} with various images provided by {@link #setUp()}.
+     * @throws Exception if tiling process fails
+     */
     @Test
     public void testTiling() throws Exception {
         for (final Map.Entry<String, String> entry : pics.entrySet()) {
@@ -87,8 +104,7 @@ public class MCRImageTest {
             assertEquals(entry.getKey() + ": Metadata tile count does not match stored tile count.", props.getTilesCount(), tilesCount);
             final int x = props.width;
             final int y = props.height;
-            assertEquals(entry.getKey() + ": Calculated tile count does not match stored tile count.", MCRImage.getTileCount(x, y),
-                    tilesCount);
+            assertEquals(entry.getKey() + ": Calculated tile count does not match stored tile count.", MCRImage.getTileCount(x, y), tilesCount);
         }
     }
 }
