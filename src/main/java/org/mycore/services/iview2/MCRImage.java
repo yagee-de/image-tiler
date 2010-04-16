@@ -479,7 +479,7 @@ public class MCRImage {
                 final StringBuilder tileName = new StringBuilder(Integer.toString(z)).append('/').append(y).append('/').append(x).append(".jpg");
                 final ZipEntry ze = new ZipEntry(tileName.toString());
                 zout.putNextEntry(ze);
-                writeImageIoTile(zout, tile, x, y, z);
+                writeImageIoTile(zout, tile);
                 imageTilesCount.incrementAndGet();
             } finally {
                 zout.closeEntry();
@@ -552,7 +552,7 @@ public class MCRImage {
         this.imageWriter = imgWriter;
     }
 
-    private void writeImageIoTile(final ZipOutputStream zout, final BufferedImage tile, final int x, final int y, final int z) throws IOException {
+    private void writeImageIoTile(final ZipOutputStream zout, final BufferedImage tile) throws IOException {
         final ImageOutputStream imageOutputStream = ImageIO.createImageOutputStream(zout);
         final ImageWriter imgWriter = getImageWriter();
         try {
