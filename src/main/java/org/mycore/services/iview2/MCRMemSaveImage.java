@@ -1,5 +1,4 @@
 /*
- * $Id$
  * $Revision: 5697 $ $Date: 04.12.2009 $
  *
  * This file is part of ***  M y C o R e  ***
@@ -48,7 +47,7 @@ import org.apache.log4j.Logger;
  * @author Thomas Scheffler (yagee) & Matthias Eichner!!!
  */
 class MCRMemSaveImage extends MCRImage {
-    private static Logger LOGGER = Logger.getLogger(MCRMemSaveImage.class);
+    private static final Logger LOGGER = Logger.getLogger(MCRMemSaveImage.class);
 
     private static final short MIN_STEP = 3;
 
@@ -58,55 +57,85 @@ class MCRMemSaveImage extends MCRImage {
 
     private ImageReader imageReader;
 
-    public MCRMemSaveImage(File file, String derivateID, String imagePath) throws IOException {
-        super(file, derivateID, imagePath);
-        ImageReader imageReader = createImageReader(imageFile);
-        setImageReader(imageReader);
-        setImageSize(imageReader);
-        short zoomLevelAtATime = getZoomLevelPerStep(getImageWidth(), getImageHeight());
+    /**
+     * for internal use only: uses required properties to instantiate.
+     * @param file the image file
+     * @param derivateID the derivate ID the image belongs to
+     * @param relImagePath the relative path from the derivate root to the image
+     * @throws IOException if {@link ImageReader} could not be instantiated
+     */
+    MCRMemSaveImage(final File file, final String derivateID, final String relImagePath) throws IOException {
+        super(file, derivateID, relImagePath);
+        final ImageReader imgReader = createImageReader(imageFile);
+        setImageReader(imgReader);
+        setImageSize(imgReader);
+        final short zoomLevelAtATime = getZoomLevelPerStep(getImageWidth(), getImageHeight());
         setZoomLevelPerStep(zoomLevelAtATime);
         LOGGER.info("Using mega tile size of " + megaTileSize + "px for image sized " + getImageWidth() + "x" + getImageHeight());
+    }
+
+    private static ImageReader createImageReader(final File imageFile) throws IOException {
+        final RandomAccessFile raf = new RandomAccessFile(imageFile, "r");
+        final ImageInputStream iis = ImageIO.createImageInputStream(raf);
+        final Iterator<ImageReader> readers = ImageIO.getImageReaders(iis);
+        final ImageReader reader = readers.next();
+        reader.setInput(iis, false);
+        return reader;
+    }
+
+    private static BufferedImage getTileOfImage(final BufferedImage megaTile, final int x, final int y) {
+        final int tileWidth = Math.min(megaTile.getWidth() - TILE_SIZE * x, TILE_SIZE);
+        final int tileHeight = Math.min(megaTile.getHeight() - TILE_SIZE * y, TILE_SIZE);
+        if (tileWidth != 0 && tileHeight != 0) {
+            return megaTile.getSubimage(x * TILE_SIZE, y * TILE_SIZE, tileWidth, tileHeight);
+        }
+        return null;
+    }
+
+    private static short getZoomLevelPerStep(final int width, final int height) {
+        final int zoomLevels = getZoomLevels(width, height);
+        return (short) Math.max(MIN_STEP, (int) Math.ceil(zoomLevels / 2d));
     }
 
     @Override
     public MCRTiledPictureProps tile() throws IOException {
         try {
             //initialize some basic variables
-            ZipOutputStream zout = getZipOutputStream();
+            final ZipOutputStream zout = getZipOutputStream();
             setImageZoomLevels(getZoomLevels(getImageWidth(), getImageHeight()));
-            int redWidth = (int) Math.ceil(getImageWidth() / ((double) megaTileSize / TILE_SIZE));
-            int redHeight = (int) Math.ceil(getImageHeight() / ((double) megaTileSize / TILE_SIZE));
+            final int redWidth = (int) Math.ceil(getImageWidth() / ((double) megaTileSize / TILE_SIZE));
+            final int redHeight = (int) Math.ceil(getImageHeight() / ((double) megaTileSize / TILE_SIZE));
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("reduced size: " + redWidth + "x" + redHeight);
             }
-            int stopOnZoomLevel = getZoomLevels(redWidth, redHeight);
+            final int stopOnZoomLevel = getZoomLevels(redWidth, redHeight);
             BufferedImage lastPhaseImage = null;
-            boolean lastPhaseNeeded = Math.max(redWidth, redHeight) > TILE_SIZE;
+            final boolean lastPhaseNeeded = Math.max(redWidth, redHeight) > TILE_SIZE;
             if (lastPhaseNeeded) {
                 //prepare empty image for the last phase of tiling process 
-                ImageTypeSpecifier imageType = imageReader.getImageTypes(0).next();
+                final ImageTypeSpecifier imageType = imageReader.getImageTypes(0).next();
                 int bufferedImageType = imageType.getBufferedImageType();
                 if (bufferedImageType == BufferedImage.TYPE_CUSTOM) {
                     bufferedImageType = BufferedImage.TYPE_INT_RGB;
                 }
                 lastPhaseImage = new BufferedImage(redWidth, redHeight, bufferedImageType);
             }
-            int xcount = (int) Math.ceil((float) getImageWidth() / (float) megaTileSize);
-            int ycount = (int) Math.ceil((float) getImageHeight() / (float) megaTileSize);
-            int imageZoomLevels = getImageZoomLevels();
-            int zoomFactor = megaTileSize / TILE_SIZE;
+            final int xcount = (int) Math.ceil((float) getImageWidth() / (float) megaTileSize);
+            final int ycount = (int) Math.ceil((float) getImageHeight() / (float) megaTileSize);
+            final int imageZoomLevels = getImageZoomLevels();
+            final int zoomFactor = megaTileSize / TILE_SIZE;
 
             for (int x = 0; x < xcount; x++) {
                 for (int y = 0; y < ycount; y++) {
                     LOGGER.info("create new mega tile (" + x + "," + y + ")");
-                    int xpos = x * megaTileSize;
-                    int width = Math.min(megaTileSize, getImageWidth() - xpos);
-                    int ypos = y * megaTileSize;
-                    int height = Math.min(megaTileSize, getImageHeight() - ypos);
-                    BufferedImage megaTile = getTileOfFile(xpos, ypos, width, height);
+                    final int xpos = x * megaTileSize;
+                    final int width = Math.min(megaTileSize, getImageWidth() - xpos);
+                    final int ypos = y * megaTileSize;
+                    final int height = Math.min(megaTileSize, getImageHeight() - ypos);
+                    final BufferedImage megaTile = getTileOfFile(xpos, ypos, width, height);
                     LOGGER.info("megaTile create - start tiling");
                     // stitch
-                    BufferedImage tile = writeTiles(zout, megaTile, x, y, imageZoomLevels, zoomFactor, stopOnZoomLevel);
+                    final BufferedImage tile = writeTiles(zout, megaTile, x, y, imageZoomLevels, zoomFactor, stopOnZoomLevel);
                     if (lastPhaseNeeded) {
                         stichTiles(lastPhaseImage, tile, x * TILE_SIZE, y * TILE_SIZE);
                     }
@@ -114,7 +143,7 @@ class MCRMemSaveImage extends MCRImage {
             }
             if (lastPhaseNeeded) {
                 lastPhaseImage = scaleBufferedImage(lastPhaseImage);
-                int lastPhaseZoomLevels = getZoomLevels(lastPhaseImage.getHeight(), lastPhaseImage.getWidth());
+                final int lastPhaseZoomLevels = getZoomLevels(lastPhaseImage.getHeight(), lastPhaseImage.getWidth());
                 writeTiles(zout, lastPhaseImage, 0, 0, lastPhaseZoomLevels, 0, 0);
             }
             writeMetaData(zout);
@@ -126,40 +155,53 @@ class MCRMemSaveImage extends MCRImage {
         return getImageProperties();
     }
 
+    private ImageReader getImageReader() {
+        return imageReader;
+    }
+
+    private void setImageReader(final ImageReader reader) {
+        imageReader = reader;
+    }
+
     /**
      * Set the image size.
      * Maybe the hole image will be read into RAM for getWidth() and getHeight().
      * 
-     * @param imageReader
+     * @param imgReader
      * @throws IOException
      */
-    private void setImageSize(ImageReader imageReader) {
+    private void setImageSize(final ImageReader imgReader) {
         try {
-            setImageHeight(imageReader.getHeight(0));
-            setImageWidth(imageReader.getWidth(0));
-        } catch (IOException e) {
+            setImageHeight(imgReader.getHeight(0));
+            setImageWidth(imgReader.getWidth(0));
+        } catch (final IOException e) {
             LOGGER.error(e);
         }
     }
 
-    private BufferedImage stichTiles(BufferedImage stitchImage, BufferedImage tileImage, int x, int y) {
-        Graphics graphics = stitchImage.getGraphics();
+    private void setZoomLevelPerStep(final short zoomLevel) {
+        zoomLevelPerStep = zoomLevel;
+        megaTileSize = MCRImage.TILE_SIZE * (int) Math.pow(2, zoomLevelPerStep); //4096x4096 if 4
+    }
+
+    private BufferedImage stichTiles(final BufferedImage stitchImage, final BufferedImage tileImage, final int x, final int y) {
+        final Graphics graphics = stitchImage.getGraphics();
         graphics.drawImage(tileImage, x, y, null);
         return stitchImage;
     }
 
-    private BufferedImage writeTiles(ZipOutputStream zout, BufferedImage megaTile, int x, int y, int imageZoomLevels, int zoomFactor,
-            int stopOnZoomLevel) throws IOException {
-        int tWidth = megaTile.getWidth();
-        int tHeight = megaTile.getHeight();
+    private BufferedImage writeTiles(final ZipOutputStream zout, final BufferedImage megaTile, final int x, final int y,
+            final int imageZoomLevels, final int zoomFactor, final int stopOnZoomLevel) throws IOException {
+        final int tWidth = megaTile.getWidth();
+        final int tHeight = megaTile.getHeight();
         BufferedImage tile = null;
-        int txCount = (int) Math.ceil((float) tWidth / (float) TILE_SIZE);
-        int tyCount = (int) Math.ceil((float) tHeight / (float) TILE_SIZE);
+        final int txCount = (int) Math.ceil((float) tWidth / (float) TILE_SIZE);
+        final int tyCount = (int) Math.ceil((float) tHeight / (float) TILE_SIZE);
         for (int tx = 0; tx < txCount; tx++) {
             for (int ty = 0; ty < tyCount; ty++) {
                 tile = getTileOfImage(megaTile, tx, ty);
-                int realX = zoomFactor * x + tx;
-                int realY = zoomFactor * y + ty;
+                final int realX = zoomFactor * x + tx;
+                final int realY = zoomFactor * y + ty;
                 writeTile(zout, tile, realX, realY, imageZoomLevels);
             }
         }
@@ -170,24 +212,24 @@ class MCRMemSaveImage extends MCRImage {
         return tile;
     }
 
-    private void setZoomLevelPerStep(short zoomLevel) {
-        zoomLevelPerStep = zoomLevel;
-        megaTileSize = MCRImage.TILE_SIZE * (int) Math.pow(2, zoomLevelPerStep); //4096x4096 if 4
-    }
-
-    private ImageReader getImageReader() {
-        return imageReader;
-    }
-
-    protected BufferedImage getTileOfFile(int x, int y, int width, int height) throws IOException {
-        ImageReadParam param = getImageReader().getDefaultReadParam();
-        Rectangle srcRegion = new Rectangle(x, y, width, height);
+    /**
+     * Reads a rectangular area of the current image.
+     * @param x upper left x-coordinate
+     * @param y upper left y-coordinate
+     * @param width width of the area of interest
+     * @param height height of the area of interest
+     * @return area of interest
+     * @throws IOException if source file could not be read
+     */
+    protected BufferedImage getTileOfFile(final int x, final int y, final int width, final int height) throws IOException {
+        final ImageReadParam param = getImageReader().getDefaultReadParam();
+        final Rectangle srcRegion = new Rectangle(x, y, width, height);
         param.setSourceRegion(srcRegion);
 
         //BugFix for bug reported at: http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4705399
         ImageTypeSpecifier typeToUse = null;
-        for (Iterator<ImageTypeSpecifier> i = getImageReader().getImageTypes(0); i.hasNext();) {
-            ImageTypeSpecifier type = i.next();
+        for (final Iterator<ImageTypeSpecifier> i = getImageReader().getImageTypes(0); i.hasNext();) {
+            final ImageTypeSpecifier type = i.next();
             if (type.getColorModel().getColorSpace().isCS_sRGB()) {
                 typeToUse = type;
                 break;
@@ -199,42 +241,15 @@ class MCRMemSaveImage extends MCRImage {
         }
 
         BufferedImage tile = getImageReader().read(0, param);
-        if (tile.getColorModel().getPixelSize() > 24) {
+        if (tile.getColorModel().getPixelSize() > JPEG_CM_PIXEL_SIZE) {
             // convert to 24 bit
             LOGGER.info("Converting image to 24 bit color depth");
-            BufferedImage newTile = new BufferedImage(tile.getWidth(), tile.getHeight(), BufferedImage.TYPE_INT_RGB);
+            final BufferedImage newTile = new BufferedImage(tile.getWidth(), tile.getHeight(), BufferedImage.TYPE_INT_RGB);
             newTile.createGraphics().drawImage(tile, 0, 0, tile.getWidth(), tile.getHeight(), null);
             tile = newTile;
         }
 
         return tile;
-    }
-
-    private void setImageReader(ImageReader reader) {
-        imageReader = reader;
-    }
-
-    private static BufferedImage getTileOfImage(BufferedImage megaTile, int x, int y) {
-        int tileWidth = Math.min(megaTile.getWidth() - TILE_SIZE * x, TILE_SIZE);
-        int tileHeight = Math.min(megaTile.getHeight() - TILE_SIZE * y, TILE_SIZE);
-        if (tileWidth != 0 && tileHeight != 0) {
-            return megaTile.getSubimage(x * TILE_SIZE, y * TILE_SIZE, tileWidth, tileHeight);
-        }
-        return null;
-    }
-
-    private static short getZoomLevelPerStep(int width, int height) {
-        int zoomLevels = getZoomLevels(width, height);
-        return (short) Math.max(MIN_STEP, (int) Math.ceil(zoomLevels / 2d));
-    }
-
-    private static ImageReader createImageReader(File imageFile) throws IOException {
-        RandomAccessFile raf = new RandomAccessFile(imageFile, "r");
-        ImageInputStream iis = ImageIO.createImageInputStream(raf);
-        Iterator<ImageReader> readers = ImageIO.getImageReaders(iis);
-        ImageReader reader = readers.next();
-        reader.setInput(iis, false);
-        return reader;
     }
 
 }

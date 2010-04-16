@@ -1,3 +1,24 @@
+/*
+ * $Revision: 15646 $ $Date: 2009-07-28 11:32:04 +0200 (Di, 28 Jul 2009) $
+ *
+ * This file is part of ***  M y C o R e  ***
+ * See http://www.mycore.de/ for details.
+ *
+ * This program is free software; you can use it, redistribute it
+ * and / or modify it under the terms of the GNU General Public License
+ * (GPL) as published by the Free Software Foundation; either version 2
+ * of the License or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program, in a file called gpl.txt or license.txt.
+ * If not, write to the Free Software Foundation Inc.,
+ * 59 Temple Place - Suite 330, Boston, MA  02111-1307 USA
+ */
 package org.mycore.services.iview2;
 
 import java.io.File;
@@ -12,46 +33,59 @@ import org.jdom.Element;
 import org.jdom.JDOMException;
 import org.jdom.input.SAXBuilder;
 
+/**
+ * The <code>MCRTiledPictureProps</code> gives access to a bunch of properties referring to a {@link MCRImage} instance.
+ * @author Thomas Scheffler (yagee)
+ *
+ */
 public class MCRTiledPictureProps {
-
-    int countTiles;
-
-    int width;
-
-    int height;
-
-    int zoomlevel;
-
-    static final String PROP_ZOOM_LEVEL = "zoomLevel";
-
-    static final String PROP_HEIGHT = "height";
-
-    static final String PROP_WIDTH = "width";
-
-    static final String PROP_TILES = "tiles";
-
-    static final String PROP_PATH = "path";
-
-    static final String PROP_DERIVATE = "derivate";
 
     static final String IMAGEINFO_XML = "imageinfo.xml";
 
-    private static Logger LOGGER = Logger.getLogger(MCRTiledPictureProps.class);
+    static final String PROP_DERIVATE = "derivate";
 
-    private static SAXBuilder DOC_BUILDER = new SAXBuilder(false);
+    static final String PROP_HEIGHT = "height";
 
-    public static MCRTiledPictureProps getInstance(File iviewFile) throws IOException, JDOMException {
-        ZipFile zipFile = new ZipFile(iviewFile);
-        ZipEntry ze = zipFile.getEntry(IMAGEINFO_XML);
+    static final String PROP_PATH = "path";
+
+    static final String PROP_TILES = "tiles";
+
+    static final String PROP_WIDTH = "width";
+
+    static final String PROP_ZOOM_LEVEL = "zoomLevel";
+
+    private static final SAXBuilder DOC_BUILDER = new SAXBuilder(false);
+
+    private static final Logger LOGGER = Logger.getLogger(MCRTiledPictureProps.class);
+
+    int tilesCount;
+
+    int height;
+
+    int width;
+
+    int zoomlevel;
+
+    /**
+     * gets properties of the given <code>.iview2</code> file.
+     * Use {@link MCRImage#getTiledFile(File, String, String)} to get the {@link File} instance of the <code>.iview2</code> file.
+     * @param iviewFile the IView2 file
+     * @return instance of the class referring <code>iviewFile</code> 
+     * @throws IOException Exceptions occurs while accessing <code>iviewFile</code>.
+     * @throws JDOMException Exceptions while parsing metadata (file: <code>imageinfo.xml</code>)
+     */
+    public static MCRTiledPictureProps getInstance(final File iviewFile) throws IOException, JDOMException {
+        final ZipFile zipFile = new ZipFile(iviewFile);
+        final ZipEntry ze = zipFile.getEntry(IMAGEINFO_XML);
         if (ze != null) {
             //size of a tile or imageinfo.xml file is always smaller than Integer.MAX_VALUE
             LOGGER.debug("Extracting " + ze.getName() + " size " + ze.getSize());
-            InputStream zin = zipFile.getInputStream(ze);
+            final InputStream zin = zipFile.getInputStream(ze);
             try {
-                Document imageInfo = DOC_BUILDER.build(zin);
-                Element root = imageInfo.getRootElement();
-                MCRTiledPictureProps props = new MCRTiledPictureProps();
-                props.countTiles = Integer.parseInt(root.getAttributeValue(PROP_TILES));
+                final Document imageInfo = DOC_BUILDER.build(zin);
+                final Element root = imageInfo.getRootElement();
+                final MCRTiledPictureProps props = new MCRTiledPictureProps();
+                props.tilesCount = Integer.parseInt(root.getAttributeValue(PROP_TILES));
                 props.height = Integer.parseInt(root.getAttributeValue(PROP_HEIGHT));
                 props.width = Integer.parseInt(root.getAttributeValue(PROP_WIDTH));
                 props.zoomlevel = Integer.parseInt(root.getAttributeValue(PROP_ZOOM_LEVEL));
@@ -66,17 +100,10 @@ public class MCRTiledPictureProps {
     }
 
     /**
-     * @return the countTiles
+     * @return the tiles count
      */
-    public int getCountTiles() {
-        return countTiles;
-    }
-
-    /**
-     * @return the width
-     */
-    public int getWidth() {
-        return width;
+    public int getTilesCount() {
+        return tilesCount;
     }
 
     /**
@@ -84,6 +111,13 @@ public class MCRTiledPictureProps {
      */
     public int getHeight() {
         return height;
+    }
+
+    /**
+     * @return the width
+     */
+    public int getWidth() {
+        return width;
     }
 
     /**

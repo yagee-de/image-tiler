@@ -1,3 +1,24 @@
+/*
+ * $Revision: 15646 $ $Date: 2009-07-28 11:32:04 +0200 (Di, 28 Jul 2009) $
+ *
+ * This file is part of ***  M y C o R e  ***
+ * See http://www.mycore.de/ for details.
+ *
+ * This program is free software; you can use it, redistribute it
+ * and / or modify it under the terms of the GNU General Public License
+ * (GPL) as published by the Free Software Foundation; either version 2
+ * of the License or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program, in a file called gpl.txt or license.txt.
+ * If not, write to the Free Software Foundation Inc.,
+ * 59 Temple Place - Suite 330, Boston, MA  02111-1307 USA
+ */
 package org.mycore.services.iview2;
 
 import static org.junit.Assert.assertEquals;
@@ -14,9 +35,23 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class MCRImageTest {
-    private HashMap<String, String> pics = new HashMap<String, String>();
+    private final HashMap<String, String> pics = new HashMap<String, String>();
 
-    File tileDir;
+    private File tileDir;
+
+    private static boolean deleteDirectory(final File path) {
+        if (path.exists()) {
+            final File[] files = path.listFiles();
+            for (final File file : files) {
+                if (file.isDirectory()) {
+                    deleteDirectory(file);
+                } else {
+                    file.delete();
+                }
+            }
+        }
+        return path.delete();
+    }
 
     @Before
     public void setUp() throws Exception {
@@ -34,38 +69,24 @@ public class MCRImageTest {
         deleteDirectory(tileDir);
     }
 
-    private static boolean deleteDirectory(File path) {
-        if (path.exists()) {
-            File[] files = path.listFiles();
-            for (File file : files) {
-                if (file.isDirectory()) {
-                    deleteDirectory(file);
-                } else {
-                    file.delete();
-                }
-            }
-        }
-        return path.delete();
-    }
-
     @Test
     public void testTiling() throws Exception {
-        for (Map.Entry<String, String> entry : pics.entrySet()) {
-            File file = new File(entry.getValue());
-            String derivateID = "derivateID";
-            String imagePath = "imagePath/" + FilenameUtils.getName(entry.getValue());
-            MCRImage image = new MCRMemSaveImage(file, derivateID, imagePath);
+        for (final Map.Entry<String, String> entry : pics.entrySet()) {
+            final File file = new File(entry.getValue());
+            final String derivateID = "derivateID";
+            final String imagePath = "imagePath/" + FilenameUtils.getName(entry.getValue());
+            final MCRImage image = new MCRMemSaveImage(file, derivateID, imagePath);
             image.setTileDir(tileDir);
             image.tile();
             assertTrue("Tile directory is not created.", tileDir.exists());
-            File iviewFile = MCRImage.getTiledFile(tileDir, derivateID, imagePath);
+            final File iviewFile = MCRImage.getTiledFile(tileDir, derivateID, imagePath);
             assertTrue("IView File is not created:" + iviewFile.getAbsolutePath(), iviewFile.exists());
-            MCRTiledPictureProps props = MCRTiledPictureProps.getInstance(iviewFile);
-            ZipFile iviewImage = new ZipFile(iviewFile);
-            int tilesCount = iviewImage.size() - 1;
-            assertEquals(entry.getKey() + ": Metadata tile count does not match stored tile count.", props.countTiles, tilesCount);
-            int x = props.width;
-            int y = props.height;
+            final MCRTiledPictureProps props = MCRTiledPictureProps.getInstance(iviewFile);
+            final ZipFile iviewImage = new ZipFile(iviewFile);
+            final int tilesCount = iviewImage.size() - 1;
+            assertEquals(entry.getKey() + ": Metadata tile count does not match stored tile count.", props.getTilesCount(), tilesCount);
+            final int x = props.width;
+            final int y = props.height;
             assertEquals(entry.getKey() + ": Calculated tile count does not match stored tile count.", MCRImage.getTileCount(x, y),
                     tilesCount);
         }
