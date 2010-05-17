@@ -8,12 +8,12 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.mycore.iview2</groupId>
   <artifactId>image-tiler</artifactId>
-  <version>1.1-SNAPSHOT</version>
+  <version>1.1</version>
   <name>MyCoRe IView2 Image Tiler Library</name>
   <scm>
-    <connection>scm:svn:http://server.mycore.de/svn/mycore-iview2-addons/image-tiler/trunk</connection>
-    <developerConnection>scm:svn:https://server.mycore.de/svn/mycore-iview2-addons/image-tiler/trunk</developerConnection>
-    <url>http://www.mycore.de/viewvc/viewvc.cgi/mycore-iview2-addons/image-tiler/trunk</url>
+    <connection>scm:svn:http://server.mycore.de/svn/mycore-iview2-addons/image-tiler/tags/image-tiler-1.1</connection>
+    <developerConnection>scm:svn:https://server.mycore.de/svn/mycore-iview2-addons/image-tiler/tags/image-tiler-1.1</developerConnection>
+    <url>http://www.mycore.de/viewvc/viewvc.cgi/mycore-iview2-addons/image-tiler/tags/image-tiler-1.1</url>
   </scm>
   <distributionManagement>
     <site>
