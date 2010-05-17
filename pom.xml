@@ -158,10 +158,6 @@
           <configLocation>${project.build.directory}/checkstyle-configuration.xml</configLocation>
         </configuration>
       </plugin>
-      <plugin>
-        <groupId>net.sf</groupId>
-        <artifactId>stat-scm</artifactId>
-      </plugin>
     </plugins>
   </reporting>
   <dependencies>
