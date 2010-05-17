@@ -54,7 +54,13 @@ public class MCRTiledPictureProps {
 
     static final String PROP_ZOOM_LEVEL = "zoomLevel";
 
-    private static final SAXBuilder DOC_BUILDER = new SAXBuilder(false);
+    private static final ThreadLocal<SAXBuilder> DOC_BUILDER = new ThreadLocal<SAXBuilder>() {
+        @Override
+        protected SAXBuilder initialValue() {
+            return new SAXBuilder(false);
+        }
+
+    };
 
     private static final Logger LOGGER = Logger.getLogger(MCRTiledPictureProps.class);
 
@@ -82,7 +88,7 @@ public class MCRTiledPictureProps {
             LOGGER.debug("Extracting " + ze.getName() + " size " + ze.getSize());
             final InputStream zin = zipFile.getInputStream(ze);
             try {
-                final Document imageInfo = DOC_BUILDER.build(zin);
+                final Document imageInfo = DOC_BUILDER.get().build(zin);
                 final Element root = imageInfo.getRootElement();
                 final MCRTiledPictureProps props = new MCRTiledPictureProps();
                 props.tilesCount = Integer.parseInt(root.getAttributeValue(PROP_TILES));
