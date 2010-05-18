@@ -98,6 +98,7 @@ public class MCRTiledPictureProps {
                 return props;
             } finally {
                 zin.close();
+                zipFile.close();
             }
         } else {
             LOGGER.warn("Did not find " + IMAGEINFO_XML + " in " + iviewFile.getAbsolutePath());
