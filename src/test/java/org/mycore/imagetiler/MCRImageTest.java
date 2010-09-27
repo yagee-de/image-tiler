@@ -19,7 +19,7 @@
  * If not, write to the Free Software Foundation Inc.,
  * 59 Temple Place - Suite 330, Boston, MA  02111-1307 USA
  */
-package org.mycore.services.iview2;
+package org.mycore.imagetiler;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -33,6 +33,9 @@ import org.apache.commons.io.FilenameUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.mycore.imagetiler.MCRImage;
+import org.mycore.imagetiler.MCRMemSaveImage;
+import org.mycore.imagetiler.MCRTiledPictureProps;
 
 /**
  * Provides a good test case for {@link MCRImage}.

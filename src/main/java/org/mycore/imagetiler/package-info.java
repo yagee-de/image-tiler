@@ -23,5 +23,5 @@
 /**
  * Provides service classes for ImageViewer 2.
  */
-package org.mycore.services.iview2;
+package org.mycore.imagetiler;
 
