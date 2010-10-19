@@ -40,7 +40,10 @@ import org.jdom.input.SAXBuilder;
  */
 public class MCRTiledPictureProps {
 
-    static final String IMAGEINFO_XML = "imageinfo.xml";
+    /**
+     * file name of property file inside .iview2 file
+     */
+    public static final String IMAGEINFO_XML = "imageinfo.xml";
 
     static final String PROP_DERIVATE = "derivate";
 
