@@ -57,6 +57,10 @@ class MCRMemSaveImage extends MCRImage {
 
     private ImageReader imageReader;
 
+    private static ImageInputStream imageInputStream;
+
+    private static RandomAccessFile randomAccessFile;
+
     /**
      * for internal use only: uses required properties to instantiate.
      * @param file the image file
@@ -75,11 +79,11 @@ class MCRMemSaveImage extends MCRImage {
     }
 
     private static ImageReader createImageReader(final File imageFile) throws IOException {
-        final RandomAccessFile raf = new RandomAccessFile(imageFile, "r");
-        final ImageInputStream iis = ImageIO.createImageInputStream(raf);
-        final Iterator<ImageReader> readers = ImageIO.getImageReaders(iis);
+        randomAccessFile = new RandomAccessFile(imageFile, "r");
+        imageInputStream = ImageIO.createImageInputStream(randomAccessFile);
+        final Iterator<ImageReader> readers = ImageIO.getImageReaders(imageInputStream);
         final ImageReader reader = readers.next();
-        reader.setInput(iis, false);
+        reader.setInput(imageInputStream, false);
         return reader;
     }
 
@@ -151,6 +155,8 @@ class MCRMemSaveImage extends MCRImage {
         } finally {
             // do we need to set the reader and writer to null?? like setImageReader(null) explicitly
             getImageReader().dispose();
+            imageInputStream.close();
+            randomAccessFile.close();
         }
         return getImageProperties();
     }
