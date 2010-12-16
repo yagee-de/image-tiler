@@ -155,7 +155,6 @@ class MCRMemSaveImage extends MCRImage {
         } finally {
             // do we need to set the reader and writer to null?? like setImageReader(null) explicitly
             getImageReader().dispose();
-            imageInputStream.close();
             randomAccessFile.close();
         }
         return getImageProperties();
