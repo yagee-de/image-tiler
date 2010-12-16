@@ -385,7 +385,7 @@ public class MCRImage {
      * @param image source image
      * @return shrinked image
      */
-    protected BufferedImage scaleBufferedImage(final BufferedImage image) {
+    protected static BufferedImage scaleBufferedImage(final BufferedImage image) {
         LOGGER.info("Scaling image...");
         final int width = image.getWidth();
         final int height = image.getHeight();

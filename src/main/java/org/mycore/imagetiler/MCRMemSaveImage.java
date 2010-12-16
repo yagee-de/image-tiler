@@ -178,7 +178,7 @@ class MCRMemSaveImage extends MCRImage {
         megaTileSize = MCRImage.TILE_SIZE * (int) Math.pow(2, zoomLevelPerStep); //4096x4096 if 4
     }
 
-    private BufferedImage stichTiles(final BufferedImage stitchImage, final BufferedImage tileImage, final int x, final int y) {
+    private static BufferedImage stichTiles(final BufferedImage stitchImage, final BufferedImage tileImage, final int x, final int y) {
         final Graphics graphics = stitchImage.getGraphics();
         graphics.drawImage(tileImage, x, y, null);
         return stitchImage;
