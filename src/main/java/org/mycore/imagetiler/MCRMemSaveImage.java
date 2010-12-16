@@ -55,12 +55,6 @@ class MCRMemSaveImage extends MCRImage {
 
     private int megaTileSize;
 
-    private ImageReader imageReader;
-
-    private static ImageInputStream imageInputStream;
-
-    private static RandomAccessFile randomAccessFile;
-
     /**
      * for internal use only: uses required properties to instantiate.
      * @param file the image file
@@ -70,17 +64,13 @@ class MCRMemSaveImage extends MCRImage {
      */
     MCRMemSaveImage(final File file, final String derivateID, final String relImagePath) throws IOException {
         super(file, derivateID, relImagePath);
-        final ImageReader imgReader = createImageReader(imageFile);
-        setImageReader(imgReader);
-        setImageSize(imgReader);
         final short zoomLevelAtATime = getZoomLevelPerStep(getImageWidth(), getImageHeight());
         setZoomLevelPerStep(zoomLevelAtATime);
         LOGGER.info("Using mega tile size of " + megaTileSize + "px for image sized " + getImageWidth() + "x" + getImageHeight());
     }
 
-    private static ImageReader createImageReader(final File imageFile) throws IOException {
-        randomAccessFile = new RandomAccessFile(imageFile, "r");
-        imageInputStream = ImageIO.createImageInputStream(randomAccessFile);
+    private static ImageReader createImageReader(final RandomAccessFile imageFile) throws IOException {
+        ImageInputStream imageInputStream = ImageIO.createImageInputStream(imageFile);
         final Iterator<ImageReader> readers = ImageIO.getImageReaders(imageInputStream);
         final ImageReader reader = readers.next();
         reader.setInput(imageInputStream, false);
@@ -103,8 +93,13 @@ class MCRMemSaveImage extends MCRImage {
 
     @Override
     public MCRTiledPictureProps tile() throws IOException {
+        ImageReader imageReader = null;
+        RandomAccessFile raFile = null;
         try {
             //initialize some basic variables
+            raFile = new RandomAccessFile(imageFile, "r");
+            imageReader = createImageReader(raFile);
+            setImageSize(imageReader);
             final ZipOutputStream zout = getZipOutputStream();
             setImageZoomLevels(getZoomLevels(getImageWidth(), getImageHeight()));
             final int redWidth = (int) Math.ceil(getImageWidth() / ((double) megaTileSize / TILE_SIZE));
@@ -136,7 +131,7 @@ class MCRMemSaveImage extends MCRImage {
                     final int width = Math.min(megaTileSize, getImageWidth() - xpos);
                     final int ypos = y * megaTileSize;
                     final int height = Math.min(megaTileSize, getImageHeight() - ypos);
-                    final BufferedImage megaTile = getTileOfFile(xpos, ypos, width, height);
+                    final BufferedImage megaTile = getTileOfFile(imageReader, xpos, ypos, width, height);
                     LOGGER.info("megaTile create - start tiling");
                     // stitch
                     final BufferedImage tile = writeTiles(zout, megaTile, x, y, imageZoomLevels, zoomFactor, stopOnZoomLevel);
@@ -154,18 +149,12 @@ class MCRMemSaveImage extends MCRImage {
             zout.close();
         } finally {
             // do we need to set the reader and writer to null?? like setImageReader(null) explicitly
-            getImageReader().dispose();
-            randomAccessFile.close();
+            if (imageReader != null)
+                imageReader.dispose();
+            if (raFile != null)
+                raFile.close();
         }
         return getImageProperties();
-    }
-
-    private ImageReader getImageReader() {
-        return imageReader;
-    }
-
-    private void setImageReader(final ImageReader reader) {
-        imageReader = reader;
     }
 
     /**
@@ -195,8 +184,8 @@ class MCRMemSaveImage extends MCRImage {
         return stitchImage;
     }
 
-    private BufferedImage writeTiles(final ZipOutputStream zout, final BufferedImage megaTile, final int x, final int y,
-            final int imageZoomLevels, final int zoomFactor, final int stopOnZoomLevel) throws IOException {
+    private BufferedImage writeTiles(final ZipOutputStream zout, final BufferedImage megaTile, final int x, final int y, final int imageZoomLevels,
+        final int zoomFactor, final int stopOnZoomLevel) throws IOException {
         final int tWidth = megaTile.getWidth();
         final int tHeight = megaTile.getHeight();
         BufferedImage tile = null;
@@ -226,14 +215,14 @@ class MCRMemSaveImage extends MCRImage {
      * @return area of interest
      * @throws IOException if source file could not be read
      */
-    protected BufferedImage getTileOfFile(final int x, final int y, final int width, final int height) throws IOException {
-        final ImageReadParam param = getImageReader().getDefaultReadParam();
+    protected static BufferedImage getTileOfFile(final ImageReader reader, final int x, final int y, final int width, final int height) throws IOException {
+        final ImageReadParam param = reader.getDefaultReadParam();
         final Rectangle srcRegion = new Rectangle(x, y, width, height);
         param.setSourceRegion(srcRegion);
 
         //BugFix for bug reported at: http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4705399
         ImageTypeSpecifier typeToUse = null;
-        for (final Iterator<ImageTypeSpecifier> i = getImageReader().getImageTypes(0); i.hasNext();) {
+        for (final Iterator<ImageTypeSpecifier> i = reader.getImageTypes(0); i.hasNext();) {
             final ImageTypeSpecifier type = i.next();
             if (type.getColorModel().getColorSpace().isCS_sRGB()) {
                 typeToUse = type;
@@ -245,7 +234,7 @@ class MCRMemSaveImage extends MCRImage {
             //End Of BugFix
         }
 
-        BufferedImage tile = getImageReader().read(0, param);
+        BufferedImage tile = reader.read(0, param);
         if (tile.getColorModel().getPixelSize() > JPEG_CM_PIXEL_SIZE) {
             // convert to 24 bit
             LOGGER.info("Converting image to 24 bit color depth");
