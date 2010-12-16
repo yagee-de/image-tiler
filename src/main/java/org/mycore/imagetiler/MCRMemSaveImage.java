@@ -28,6 +28,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.text.MessageFormat;
 import java.util.Iterator;
 import java.util.zip.ZipOutputStream;
 
@@ -154,7 +155,9 @@ class MCRMemSaveImage extends MCRImage {
             if (raFile != null)
                 raFile.close();
         }
-        return getImageProperties();
+        final MCRTiledPictureProps imageProperties = getImageProperties();
+        LOGGER.info(MessageFormat.format("Finished tiling of {0}:{1}", super.derivate, super.imagePath));
+        return imageProperties;
     }
 
     /**
