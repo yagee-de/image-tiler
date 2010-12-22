@@ -26,6 +26,7 @@ import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.awt.image.RenderedImage;
 import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -373,7 +374,7 @@ public class MCRImage {
         final File iviewFile = getTiledFile(tileBaseDir, derivate, imagePath);
         LOGGER.info("Saving tiles in " + iviewFile.getAbsolutePath());
         if (iviewFile.getParentFile().exists() || iviewFile.getParentFile().mkdirs()) {
-            final ZipOutputStream zout = new ZipOutputStream(new FileOutputStream(iviewFile));
+            final ZipOutputStream zout = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(iviewFile)));
             return zout;
         } else {
             throw new FileNotFoundException("Cannot create directory " + iviewFile.getParentFile());
