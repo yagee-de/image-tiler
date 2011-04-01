@@ -101,7 +101,7 @@
       <plugin>
         <artifactId>maven-checkstyle-plugin</artifactId>
         <configuration>
-          <configLocation>${project.build.directory}/checkstyle-configuration.xml</configLocation>
+          <configLocation>org/mycore/checkstyle.xml</configLocation>
         </configuration>
       </plugin>
     </plugins>
