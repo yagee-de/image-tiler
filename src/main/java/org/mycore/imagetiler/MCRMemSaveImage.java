@@ -73,6 +73,10 @@ class MCRMemSaveImage extends MCRImage {
     private static ImageReader createImageReader(final RandomAccessFile imageFile) throws IOException {
         ImageInputStream imageInputStream = ImageIO.createImageInputStream(imageFile);
         final Iterator<ImageReader> readers = ImageIO.getImageReaders(imageInputStream);
+        if (!readers.hasNext()) {
+            imageInputStream.close();
+            return null;
+        }
         final ImageReader reader = readers.next();
         reader.setInput(imageInputStream, false);
         return reader;
@@ -100,6 +104,9 @@ class MCRMemSaveImage extends MCRImage {
             //initialize some basic variables
             raFile = new RandomAccessFile(imageFile, "r");
             imageReader = createImageReader(raFile);
+            if (imageReader == null) {
+                throw new IOException("No ImageReader available for file: " + imageFile.getAbsolutePath());
+            }
             setImageSize(imageReader);
             final ZipOutputStream zout = getZipOutputStream();
             setImageZoomLevels(getZoomLevels(getImageWidth(), getImageHeight()));
