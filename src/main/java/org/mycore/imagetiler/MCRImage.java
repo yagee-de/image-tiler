@@ -166,7 +166,6 @@ public class MCRImage {
         derivate = derivateID;
         this.imagePath = relImagePath;
         setImageWriter(createJPEGImageWriter());
-        LOGGER.info("MCRImage initialized");
     }
 
     /**
@@ -387,7 +386,7 @@ public class MCRImage {
      * @return shrinked image
      */
     protected static BufferedImage scaleBufferedImage(final BufferedImage image) {
-        LOGGER.info("Scaling image...");
+        LOGGER.debug("Scaling image...");
         final int width = image.getWidth();
         final int height = image.getHeight();
         final int newWidth = (int) Math.ceil(width / 2d);
@@ -402,7 +401,7 @@ public class MCRImage {
         bg.scale(ZOOM_FACTOR, ZOOM_FACTOR);
         bg.drawImage(image, 0, 0, null);
         bg.dispose();
-        LOGGER.info("Scaling done: " + width + "x" + height);
+        LOGGER.debug("Scaling done: " + width + "x" + height);
         return bicubic;
     }
 

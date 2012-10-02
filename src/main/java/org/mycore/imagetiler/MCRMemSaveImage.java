@@ -65,9 +65,6 @@ class MCRMemSaveImage extends MCRImage {
      */
     MCRMemSaveImage(final File file, final String derivateID, final String relImagePath) throws IOException {
         super(file, derivateID, relImagePath);
-        final short zoomLevelAtATime = getZoomLevelPerStep(getImageWidth(), getImageHeight());
-        setZoomLevelPerStep(zoomLevelAtATime);
-        LOGGER.info("Using mega tile size of " + megaTileSize + "px for image sized " + getImageWidth() + "x" + getImageHeight());
     }
 
     private static ImageReader createImageReader(final RandomAccessFile imageFile) throws IOException {
@@ -98,6 +95,7 @@ class MCRMemSaveImage extends MCRImage {
 
     @Override
     public MCRTiledPictureProps tile() throws IOException {
+        LOGGER.info(MessageFormat.format("Start tiling of {0}:{1}", super.derivate, super.imagePath));
         ImageReader imageReader = null;
         RandomAccessFile raFile = null;
         try {
@@ -134,13 +132,13 @@ class MCRMemSaveImage extends MCRImage {
 
             for (int x = 0; x < xcount; x++) {
                 for (int y = 0; y < ycount; y++) {
-                    LOGGER.info("create new mega tile (" + x + "," + y + ")");
+                    LOGGER.debug("create new mega tile (" + x + "," + y + ")");
                     final int xpos = x * megaTileSize;
                     final int width = Math.min(megaTileSize, getImageWidth() - xpos);
                     final int ypos = y * megaTileSize;
                     final int height = Math.min(megaTileSize, getImageHeight() - ypos);
                     final BufferedImage megaTile = getTileOfFile(imageReader, xpos, ypos, width, height);
-                    LOGGER.info("megaTile create - start tiling");
+                    LOGGER.debug("megaTile create - start tiling");
                     // stitch
                     final BufferedImage tile = writeTiles(zout, megaTile, x, y, imageZoomLevels, zoomFactor, stopOnZoomLevel);
                     if (lastPhaseNeeded) {
@@ -178,6 +176,9 @@ class MCRMemSaveImage extends MCRImage {
         try {
             setImageHeight(imgReader.getHeight(0));
             setImageWidth(imgReader.getWidth(0));
+            final short zoomLevelAtATime = getZoomLevelPerStep(getImageWidth(), getImageHeight());
+            setZoomLevelPerStep(zoomLevelAtATime);
+            LOGGER.debug("Using mega tile size of " + megaTileSize + "px for image sized " + getImageWidth() + "x" + getImageHeight());
         } catch (final IOException e) {
             LOGGER.error(e);
         }
