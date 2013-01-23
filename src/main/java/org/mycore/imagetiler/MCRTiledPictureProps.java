@@ -28,10 +28,11 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 import org.apache.log4j.Logger;
-import org.jdom.Document;
-import org.jdom.Element;
-import org.jdom.JDOMException;
-import org.jdom.input.SAXBuilder;
+import org.jdom2.Document;
+import org.jdom2.Element;
+import org.jdom2.JDOMException;
+import org.jdom2.input.SAXBuilder;
+import org.jdom2.input.sax.XMLReaders;
 
 /**
  * The <code>MCRTiledPictureProps</code> gives access to a bunch of properties referring to a {@link MCRImage} instance.
@@ -60,7 +61,7 @@ public class MCRTiledPictureProps {
     private static final ThreadLocal<SAXBuilder> DOC_BUILDER = new ThreadLocal<SAXBuilder>() {
         @Override
         protected SAXBuilder initialValue() {
-            return new SAXBuilder(false);
+            return new SAXBuilder(XMLReaders.NONVALIDATING);
         }
 
     };
