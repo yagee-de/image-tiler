@@ -102,12 +102,15 @@ public class MCRImageTest {
             final File iviewFile = MCRImage.getTiledFile(tileDir, derivateID, imagePath);
             assertTrue("IView File is not created:" + iviewFile.getAbsolutePath(), iviewFile.exists());
             final MCRTiledPictureProps props = MCRTiledPictureProps.getInstance(iviewFile);
-            final ZipFile iviewImage = new ZipFile(iviewFile);
-            final int tilesCount = iviewImage.size() - 1;
+            final int tilesCount;
+            try (final ZipFile iviewImage = new ZipFile(iviewFile)) {
+                tilesCount = iviewImage.size() - 1;
+            }
             assertEquals(entry.getKey() + ": Metadata tile count does not match stored tile count.", props.getTilesCount(), tilesCount);
             final int x = props.width;
             final int y = props.height;
-            assertEquals(entry.getKey() + ": Calculated tile count does not match stored tile count.", MCRImage.getTileCount(x, y), tilesCount);
+            assertEquals(entry.getKey() + ": Calculated tile count does not match stored tile count.", MCRImage.getTileCount(x, y),
+                    tilesCount);
         }
     }
 }
