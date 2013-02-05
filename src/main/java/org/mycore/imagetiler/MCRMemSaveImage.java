@@ -23,20 +23,15 @@
 package org.mycore.imagetiler;
 
 import java.awt.Graphics;
-import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.text.MessageFormat;
-import java.util.Iterator;
 import java.util.zip.ZipOutputStream;
 
-import javax.imageio.ImageIO;
-import javax.imageio.ImageReadParam;
 import javax.imageio.ImageReader;
 import javax.imageio.ImageTypeSpecifier;
-import javax.imageio.stream.ImageInputStream;
 
 import org.apache.log4j.Logger;
 
@@ -45,7 +40,8 @@ import org.apache.log4j.Logger;
  * Upper memory usage for 4GP images is about 280 MB (was 28GB),
  * 68GP would take up to 1.1 GB (was 476 GB) and and 1TP images 4.4 GB (was 7 TB).
  * 
- * @author Thomas Scheffler (yagee) & Matthias Eichner!!!
+ * @author Thomas Scheffler (yagee)
+ * @author Matthias Eichner
  */
 class MCRMemSaveImage extends MCRImage {
     private static final Logger LOGGER = Logger.getLogger(MCRMemSaveImage.class);
@@ -54,7 +50,7 @@ class MCRMemSaveImage extends MCRImage {
 
     private short zoomLevelPerStep;
 
-    private int megaTileSize;
+    int megaTileSize;
 
     /**
      * for internal use only: uses required properties to instantiate.
@@ -65,18 +61,6 @@ class MCRMemSaveImage extends MCRImage {
      */
     MCRMemSaveImage(final File file, final String derivateID, final String relImagePath) throws IOException {
         super(file, derivateID, relImagePath);
-    }
-
-    private static ImageReader createImageReader(final RandomAccessFile imageFile) throws IOException {
-        ImageInputStream imageInputStream = ImageIO.createImageInputStream(imageFile);
-        final Iterator<ImageReader> readers = ImageIO.getImageReaders(imageInputStream);
-        if (!readers.hasNext()) {
-            imageInputStream.close();
-            return null;
-        }
-        final ImageReader reader = readers.next();
-        reader.setInput(imageInputStream, false);
-        return reader;
     }
 
     private static BufferedImage getTileOfImage(final BufferedImage megaTile, final int x, final int y) {
@@ -97,91 +81,75 @@ class MCRMemSaveImage extends MCRImage {
     public MCRTiledPictureProps tile() throws IOException {
         LOGGER.info(MessageFormat.format("Start tiling of {0}:{1}", super.derivate, super.imagePath));
         ImageReader imageReader = null;
-        RandomAccessFile raFile = null;
-        try {
+        try (final RandomAccessFile raFile = new RandomAccessFile(imageFile, "r")) {
             //initialize some basic variables
-            raFile = new RandomAccessFile(imageFile, "r");
-            imageReader = createImageReader(raFile);
+            imageReader = MCRImage.createImageReader(raFile);
             if (imageReader == null) {
                 throw new IOException("No ImageReader available for file: " + imageFile.getAbsolutePath());
             }
             setImageSize(imageReader);
-            final ZipOutputStream zout = getZipOutputStream();
-            setImageZoomLevels(getZoomLevels(getImageWidth(), getImageHeight()));
-            final int redWidth = (int) Math.ceil(getImageWidth() / ((double) megaTileSize / TILE_SIZE));
-            final int redHeight = (int) Math.ceil(getImageHeight() / ((double) megaTileSize / TILE_SIZE));
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("reduced size: " + redWidth + "x" + redHeight);
-            }
-            final int stopOnZoomLevel = getZoomLevels(redWidth, redHeight);
-            BufferedImage lastPhaseImage = null;
-            final boolean lastPhaseNeeded = Math.max(redWidth, redHeight) > TILE_SIZE;
-            if (lastPhaseNeeded) {
-                //prepare empty image for the last phase of tiling process 
-                final ImageTypeSpecifier imageType = imageReader.getImageTypes(0).next();
-                int bufferedImageType = imageType.getBufferedImageType();
-                if (bufferedImageType == BufferedImage.TYPE_CUSTOM) {
-                    bufferedImageType = BufferedImage.TYPE_INT_RGB;
+            try (final ZipOutputStream zout = getZipOutputStream()) {
+                setImageZoomLevels(getZoomLevels(getImageWidth(), getImageHeight()));
+                final int redWidth = (int) Math.ceil(getImageWidth() / ((double) megaTileSize / TILE_SIZE));
+                final int redHeight = (int) Math.ceil(getImageHeight() / ((double) megaTileSize / TILE_SIZE));
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("reduced size: " + redWidth + "x" + redHeight);
                 }
-                lastPhaseImage = new BufferedImage(redWidth, redHeight, bufferedImageType);
-            }
-            final int xcount = (int) Math.ceil((float) getImageWidth() / (float) megaTileSize);
-            final int ycount = (int) Math.ceil((float) getImageHeight() / (float) megaTileSize);
-            final int imageZoomLevels = getImageZoomLevels();
-            final int zoomFactor = megaTileSize / TILE_SIZE;
+                final int stopOnZoomLevel = getZoomLevels(redWidth, redHeight);
+                BufferedImage lastPhaseImage = null;
+                final boolean lastPhaseNeeded = Math.max(redWidth, redHeight) > TILE_SIZE;
+                if (lastPhaseNeeded) {
+                    //prepare empty image for the last phase of tiling process 
+                    final ImageTypeSpecifier imageType = imageReader.getImageTypes(0).next();
+                    int bufferedImageType = imageType.getBufferedImageType();
+                    if (bufferedImageType == BufferedImage.TYPE_CUSTOM) {
+                        bufferedImageType = BufferedImage.TYPE_INT_RGB;
+                    }
+                    lastPhaseImage = new BufferedImage(redWidth, redHeight, bufferedImageType);
+                }
+                final int xcount = (int) Math.ceil((float) getImageWidth() / (float) megaTileSize);
+                final int ycount = (int) Math.ceil((float) getImageHeight() / (float) megaTileSize);
+                final int imageZoomLevels = getImageZoomLevels();
+                final int zoomFactor = megaTileSize / TILE_SIZE;
 
-            for (int x = 0; x < xcount; x++) {
-                for (int y = 0; y < ycount; y++) {
-                    LOGGER.debug("create new mega tile (" + x + "," + y + ")");
-                    final int xpos = x * megaTileSize;
-                    final int width = Math.min(megaTileSize, getImageWidth() - xpos);
-                    final int ypos = y * megaTileSize;
-                    final int height = Math.min(megaTileSize, getImageHeight() - ypos);
-                    final BufferedImage megaTile = getTileOfFile(imageReader, xpos, ypos, width, height);
-                    LOGGER.debug("megaTile create - start tiling");
-                    // stitch
-                    final BufferedImage tile = writeTiles(zout, megaTile, x, y, imageZoomLevels, zoomFactor, stopOnZoomLevel);
-                    if (lastPhaseNeeded) {
-                        stichTiles(lastPhaseImage, tile, x * TILE_SIZE, y * TILE_SIZE);
+                for (int x = 0; x < xcount; x++) {
+                    for (int y = 0; y < ycount; y++) {
+                        LOGGER.debug("create new mega tile (" + x + "," + y + ")");
+                        final int xpos = x * megaTileSize;
+                        final int width = Math.min(megaTileSize, getImageWidth() - xpos);
+                        final int ypos = y * megaTileSize;
+                        final int height = Math.min(megaTileSize, getImageHeight() - ypos);
+                        final BufferedImage megaTile = MCRImage.getTileOfFile(imageReader, xpos, ypos, width, height);
+                        LOGGER.debug("megaTile create - start tiling");
+                        // stitch
+                        final BufferedImage tile = writeTiles(zout, megaTile, x, y, imageZoomLevels, zoomFactor, stopOnZoomLevel);
+                        if (lastPhaseNeeded) {
+                            stichTiles(lastPhaseImage, tile, x * TILE_SIZE, y * TILE_SIZE);
+                        }
                     }
                 }
+                if (lastPhaseNeeded) {
+                    lastPhaseImage = scaleBufferedImage(lastPhaseImage);
+                    final int lastPhaseZoomLevels = getZoomLevels(lastPhaseImage.getHeight(), lastPhaseImage.getWidth());
+                    writeTiles(zout, lastPhaseImage, 0, 0, lastPhaseZoomLevels, 0, 0);
+                }
+                writeMetaData(zout);
             }
-            if (lastPhaseNeeded) {
-                lastPhaseImage = scaleBufferedImage(lastPhaseImage);
-                final int lastPhaseZoomLevels = getZoomLevels(lastPhaseImage.getHeight(), lastPhaseImage.getWidth());
-                writeTiles(zout, lastPhaseImage, 0, 0, lastPhaseZoomLevels, 0, 0);
-            }
-            writeMetaData(zout);
-            zout.close();
         } finally {
             // do we need to set the reader and writer to null?? like setImageReader(null) explicitly
             if (imageReader != null)
                 imageReader.dispose();
-            if (raFile != null)
-                raFile.close();
         }
         final MCRTiledPictureProps imageProperties = getImageProperties();
         LOGGER.info(MessageFormat.format("Finished tiling of {0}:{1}", super.derivate, super.imagePath));
         return imageProperties;
     }
 
-    /**
-     * Set the image size.
-     * Maybe the hole image will be read into RAM for getWidth() and getHeight().
-     * 
-     * @param imgReader
-     * @throws IOException
-     */
-    private void setImageSize(final ImageReader imgReader) {
-        try {
-            setImageHeight(imgReader.getHeight(0));
-            setImageWidth(imgReader.getWidth(0));
-            final short zoomLevelAtATime = getZoomLevelPerStep(getImageWidth(), getImageHeight());
-            setZoomLevelPerStep(zoomLevelAtATime);
-            LOGGER.debug("Using mega tile size of " + megaTileSize + "px for image sized " + getImageWidth() + "x" + getImageHeight());
-        } catch (final IOException e) {
-            LOGGER.error(e);
-        }
+    @Override
+    protected void handleSizeChanged() {
+        final short zoomLevelAtATime = getZoomLevelPerStep(getImageWidth(), getImageHeight());
+        setZoomLevelPerStep(zoomLevelAtATime);
+        LOGGER.debug("Using mega tile size of " + megaTileSize + "px for image sized " + getImageWidth() + "x" + getImageHeight());
     }
 
     private void setZoomLevelPerStep(final short zoomLevel) {
@@ -214,46 +182,6 @@ class MCRMemSaveImage extends MCRImage {
             tile = scaleBufferedImage(megaTile);
             return writeTiles(zout, tile, x, y, imageZoomLevels - 1, zoomFactor / 2, stopOnZoomLevel);
         }
-        return tile;
-    }
-
-    /**
-     * Reads a rectangular area of the current image.
-     * @param x upper left x-coordinate
-     * @param y upper left y-coordinate
-     * @param width width of the area of interest
-     * @param height height of the area of interest
-     * @return area of interest
-     * @throws IOException if source file could not be read
-     */
-    protected static BufferedImage getTileOfFile(final ImageReader reader, final int x, final int y, final int width, final int height) throws IOException {
-        final ImageReadParam param = reader.getDefaultReadParam();
-        final Rectangle srcRegion = new Rectangle(x, y, width, height);
-        param.setSourceRegion(srcRegion);
-
-        //BugFix for bug reported at: http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4705399
-        ImageTypeSpecifier typeToUse = null;
-        for (final Iterator<ImageTypeSpecifier> i = reader.getImageTypes(0); i.hasNext();) {
-            final ImageTypeSpecifier type = i.next();
-            if (type.getColorModel().getColorSpace().isCS_sRGB()) {
-                typeToUse = type;
-                break;
-            }
-        }
-        if (typeToUse != null) {
-            param.setDestinationType(typeToUse);
-            //End Of BugFix
-        }
-
-        BufferedImage tile = reader.read(0, param);
-        if (tile.getColorModel().getPixelSize() > JPEG_CM_PIXEL_SIZE) {
-            // convert to 24 bit
-            LOGGER.info("Converting image to 24 bit color depth");
-            final BufferedImage newTile = new BufferedImage(tile.getWidth(), tile.getHeight(), BufferedImage.TYPE_INT_RGB);
-            newTile.createGraphics().drawImage(tile, 0, 0, tile.getWidth(), tile.getHeight(), null);
-            tile = newTile;
-        }
-
         return tile;
     }
 

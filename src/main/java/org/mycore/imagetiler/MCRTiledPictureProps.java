@@ -85,31 +85,24 @@ public class MCRTiledPictureProps {
      * @throws JDOMException Exceptions while parsing metadata (file: <code>imageinfo.xml</code>)
      */
     public static MCRTiledPictureProps getInstance(final File iviewFile) throws IOException, JDOMException {
-        final ZipFile zipFile = new ZipFile(iviewFile);
-        final ZipEntry ze = zipFile.getEntry(IMAGEINFO_XML);
-        try {
-            if (ze != null) {
-                //size of a tile or imageinfo.xml file is always smaller than Integer.MAX_VALUE
-                LOGGER.debug("Extracting " + ze.getName() + " size " + ze.getSize());
-                final InputStream zin = zipFile.getInputStream(ze);
-                try {
-                    final Document imageInfo = DOC_BUILDER.get().build(zin);
-                    final Element root = imageInfo.getRootElement();
-                    final MCRTiledPictureProps props = new MCRTiledPictureProps();
-                    props.tilesCount = Integer.parseInt(root.getAttributeValue(PROP_TILES));
-                    props.height = Integer.parseInt(root.getAttributeValue(PROP_HEIGHT));
-                    props.width = Integer.parseInt(root.getAttributeValue(PROP_WIDTH));
-                    props.zoomlevel = Integer.parseInt(root.getAttributeValue(PROP_ZOOM_LEVEL));
-                    return props;
-                } finally {
-                    zin.close();
-                }
-            } else {
+        try (final ZipFile zipFile = new ZipFile(iviewFile)) {
+            final ZipEntry ze = zipFile.getEntry(IMAGEINFO_XML);
+            if (ze == null) {
                 LOGGER.warn("Did not find " + IMAGEINFO_XML + " in " + iviewFile.getAbsolutePath());
                 return null;
             }
-        } finally {
-            zipFile.close();
+            //size of a tile or imageinfo.xml file is always smaller than Integer.MAX_VALUE
+            LOGGER.debug("Extracting " + ze.getName() + " size " + ze.getSize());
+            try (final InputStream zin = zipFile.getInputStream(ze)) {
+                final Document imageInfo = DOC_BUILDER.get().build(zin);
+                final Element root = imageInfo.getRootElement();
+                final MCRTiledPictureProps props = new MCRTiledPictureProps();
+                props.tilesCount = Integer.parseInt(root.getAttributeValue(PROP_TILES));
+                props.height = Integer.parseInt(root.getAttributeValue(PROP_HEIGHT));
+                props.width = Integer.parseInt(root.getAttributeValue(PROP_WIDTH));
+                props.zoomlevel = Integer.parseInt(root.getAttributeValue(PROP_ZOOM_LEVEL));
+                return props;
+            }
         }
     }
 

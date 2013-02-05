@@ -22,16 +22,17 @@
 package org.mycore.imagetiler;
 
 import java.awt.Graphics2D;
+import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.awt.image.RenderedImage;
-import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.util.Iterator;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.ZipEntry;
@@ -39,20 +40,20 @@ import java.util.zip.ZipOutputStream;
 
 import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReadParam;
+import javax.imageio.ImageReader;
+import javax.imageio.ImageTypeSpecifier;
 import javax.imageio.ImageWriteParam;
 import javax.imageio.ImageWriter;
 import javax.imageio.plugins.jpeg.JPEGImageWriteParam;
+import javax.imageio.stream.ImageInputStream;
 import javax.imageio.stream.ImageOutputStream;
-import javax.media.jai.JAI;
-import javax.media.jai.RenderedOp;
 
 import org.apache.log4j.Logger;
 import org.jdom2.Document;
 import org.jdom2.Element;
 import org.jdom2.output.Format;
 import org.jdom2.output.XMLOutputter;
-
-import com.sun.media.jai.codec.MemoryCacheSeekableStream;
 
 /**
  * The <code>MCRImage</code> class describes an image with different zoom levels that can be accessed by its tiles.
@@ -292,34 +293,40 @@ public class MCRImage {
         //create JPEG ImageWriter
         final ImageWriter curImgWriter = getImageWriter();
         //ImageWriter created
-        BufferedImage image = loadImage();
-        final ZipOutputStream zout = getZipOutputStream();
-        try {
-            final int zoomLevels = getZoomLevels(image);
-            LOGGER.info("Will generate " + zoomLevels + " zoom levels.");
-            for (int z = zoomLevels; z >= 0; z--) {
-                LOGGER.info("Generating zoom level " + z);
-                //image = reformatImage(scale(image));
-                LOGGER.info("Writing out tiles..");
+        ImageReader imageReader = null;
+        try (final RandomAccessFile raFile = new RandomAccessFile(imageFile, "r")) {
+            //initialize some basic variables
+            imageReader = MCRImage.createImageReader(raFile);
+            if (imageReader == null) {
+                throw new IOException("No ImageReader available for file: " + imageFile.getAbsolutePath());
+            }
+            setImageSize(imageReader);
+            BufferedImage image = getTileOfFile(imageReader, 0, 0, getImageWidth(), getImageHeight());
+            try (final ZipOutputStream zout = getZipOutputStream()) {
+                final int zoomLevels = getZoomLevels(image);
+                LOGGER.info("Will generate " + zoomLevels + " zoom levels.");
+                for (int z = zoomLevels; z >= 0; z--) {
+                    LOGGER.info("Generating zoom level " + z);
+                    //image = reformatImage(scale(image));
+                    LOGGER.info("Writing out tiles..");
 
-                final int getMaxTileY = (int) Math.ceil((double) image.getHeight() / TILE_SIZE);
-                final int getMaxTileX = (int) Math.ceil((double) image.getWidth() / TILE_SIZE);
-                for (int y = 0; y <= getMaxTileY; y++) {
-                    for (int x = 0; x <= getMaxTileX; x++) {
-                        final BufferedImage tile = getTile(image, x, y);
-                        writeTile(zout, tile, x, y, z);
+                    final int getMaxTileY = (int) Math.ceil((double) image.getHeight() / TILE_SIZE);
+                    final int getMaxTileX = (int) Math.ceil((double) image.getWidth() / TILE_SIZE);
+                    for (int y = 0; y <= getMaxTileY; y++) {
+                        for (int x = 0; x <= getMaxTileX; x++) {
+                            final BufferedImage tile = getTile(image, x, y);
+                            writeTile(zout, tile, x, y, z);
+                        }
+                    }
+                    if (z > 0) {
+                        image = scaleBufferedImage(image);
                     }
                 }
-                if (z > 0) {
-                    image = scaleBufferedImage(image);
-                }
+                curImgWriter.dispose();
+                //close imageOutputStream after disposing imageWriter or else application will hang
+                writeMetaData(zout);
+                return getImageProperties();
             }
-            curImgWriter.dispose();
-            //close imageOutputStream after disposing imageWriter or else application will hang
-            writeMetaData(zout);
-            return getImageProperties();
-        } finally {
-            zout.close();
         }
     }
 
@@ -487,20 +494,6 @@ public class MCRImage {
         }
     }
 
-    private RenderedOp getImage(final File imgFile) {
-        LOGGER.info("Reading image: " + imgFile);
-        RenderedOp render;
-        render = JAI.create("fileload", imgFile.getAbsolutePath());
-        return render;
-    }
-
-    @SuppressWarnings("unused")
-    private BufferedImage getMemImage(final File imgFile) throws FileNotFoundException {
-        final MemoryCacheSeekableStream stream = new MemoryCacheSeekableStream(new BufferedInputStream(new FileInputStream(imgFile)));
-        final RenderedOp create = JAI.create("stream", stream);
-        return create.getAsBufferedImage();
-    }
-
     private BufferedImage getTile(final BufferedImage image, final int x, final int y) {
         int tileWidth = image.getWidth() - TILE_SIZE * x;
         int tileHeight = image.getHeight() - TILE_SIZE * y;
@@ -531,38 +524,91 @@ public class MCRImage {
         return zoomLevel;
     }
 
-    private BufferedImage loadImage() throws IOException {
-        BufferedImage image;
-        final RenderedOp render = getImage(imageFile);
-        LOGGER.info("Converting to BufferedImage");
-        // handle images with 32 and more bits
-        if (render.getColorModel().getPixelSize() > JPEG_CM_PIXEL_SIZE) {
-            // convert to 24 bit
-            LOGGER.info("Converting image to 24 bit color depth");
-            image = new BufferedImage(render.getWidth(), render.getHeight(), BufferedImage.TYPE_INT_RGB);
-            image.createGraphics().drawImage(render.getAsBufferedImage(), 0, 0, render.getWidth(), render.getHeight(), null);
-        } else {
-            image = render.getAsBufferedImage();
-        }
-        LOGGER.info("Done loading image: " + image);
-        return image;
-    }
-
     private void setImageWriter(final ImageWriter imgWriter) {
         this.imageWriter = imgWriter;
     }
 
     private void writeImageIoTile(final ZipOutputStream zout, final BufferedImage tile) throws IOException {
-        final ImageOutputStream imageOutputStream = ImageIO.createImageOutputStream(zout);
         final ImageWriter imgWriter = getImageWriter();
-        try {
+        try (final ImageOutputStream imageOutputStream = ImageIO.createImageOutputStream(zout)) {
             imgWriter.setOutput(imageOutputStream);
             //tile = addWatermark(scaleBufferedImage(tile));        
             final IIOImage iioImage = new IIOImage(tile, null, null);
             imgWriter.write(null, iioImage, imageWriteParam);
         } finally {
             imgWriter.reset();
-            imageOutputStream.close();
         }
+    }
+
+    /**
+     * Set the image size.
+     * Maybe the hole image will be read into RAM for getWidth() and getHeight().
+     * 
+     * @param imgReader
+     * @throws IOException
+     */
+    protected void setImageSize(final ImageReader imgReader) {
+        try {
+            setImageHeight(imgReader.getHeight(0));
+            setImageWidth(imgReader.getWidth(0));
+            handleSizeChanged();
+        } catch (final IOException e) {
+            LOGGER.error(e);
+        }
+    }
+
+    protected void handleSizeChanged() {
+    }
+
+    static ImageReader createImageReader(final RandomAccessFile imageFile) throws IOException {
+        ImageInputStream imageInputStream = ImageIO.createImageInputStream(imageFile);
+        final Iterator<ImageReader> readers = ImageIO.getImageReaders(imageInputStream);
+        if (!readers.hasNext()) {
+            imageInputStream.close();
+            return null;
+        }
+        final ImageReader reader = readers.next();
+        reader.setInput(imageInputStream, false);
+        return reader;
+    }
+
+    /**
+     * Reads a rectangular area of the current image.
+     * @param x upper left x-coordinate
+     * @param y upper left y-coordinate
+     * @param width width of the area of interest
+     * @param height height of the area of interest
+     * @return area of interest
+     * @throws IOException if source file could not be read
+     */
+    protected static BufferedImage getTileOfFile(final ImageReader reader, final int x, final int y, final int width, final int height) throws IOException {
+        final ImageReadParam param = reader.getDefaultReadParam();
+        final Rectangle srcRegion = new Rectangle(x, y, width, height);
+        param.setSourceRegion(srcRegion);
+
+        //BugFix for bug reported at: http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4705399
+        ImageTypeSpecifier typeToUse = null;
+        for (final Iterator<ImageTypeSpecifier> i = reader.getImageTypes(0); i.hasNext();) {
+            final ImageTypeSpecifier type = i.next();
+            if (type.getColorModel().getColorSpace().isCS_sRGB()) {
+                typeToUse = type;
+                break;
+            }
+        }
+        if (typeToUse != null) {
+            param.setDestinationType(typeToUse);
+            //End Of BugFix
+        }
+
+        BufferedImage tile = reader.read(0, param);
+        if (tile.getColorModel().getPixelSize() > JPEG_CM_PIXEL_SIZE) {
+            // convert to 24 bit
+            LOGGER.info("Converting image to 24 bit color depth");
+            final BufferedImage newTile = new BufferedImage(tile.getWidth(), tile.getHeight(), BufferedImage.TYPE_INT_RGB);
+            newTile.createGraphics().drawImage(tile, 0, 0, tile.getWidth(), tile.getHeight(), null);
+            tile = newTile;
+        }
+
+        return tile;
     }
 }
