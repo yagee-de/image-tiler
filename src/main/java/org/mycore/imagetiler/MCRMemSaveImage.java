@@ -26,8 +26,6 @@ import java.awt.Graphics;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.text.MessageFormat;
 import java.util.zip.ZipOutputStream;
 
 import javax.imageio.ImageReader;
@@ -77,76 +75,62 @@ class MCRMemSaveImage extends MCRImage {
         return (short) Math.max(MIN_STEP, (int) Math.ceil(zoomLevels / 2d));
     }
 
-    @Override
-    public MCRTiledPictureProps tile() throws IOException {
-        LOGGER.info(MessageFormat.format("Start tiling of {0}:{1}", super.derivate, super.imagePath));
-        ImageReader imageReader = null;
-        try (final RandomAccessFile raFile = new RandomAccessFile(imageFile, "r")) {
-            //initialize some basic variables
-            imageReader = MCRImage.createImageReader(raFile);
-            if (imageReader == null) {
-                throw new IOException("No ImageReader available for file: " + imageFile.getAbsolutePath());
-            }
-            setImageSize(imageReader);
-            try (final ZipOutputStream zout = getZipOutputStream()) {
-                setImageZoomLevels(getZoomLevels(getImageWidth(), getImageHeight()));
-                final int redWidth = (int) Math.ceil(getImageWidth() / ((double) megaTileSize / TILE_SIZE));
-                final int redHeight = (int) Math.ceil(getImageHeight() / ((double) megaTileSize / TILE_SIZE));
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("reduced size: " + redWidth + "x" + redHeight);
-                }
-                final int stopOnZoomLevel = getZoomLevels(redWidth, redHeight);
-                BufferedImage lastPhaseImage = null;
-                final boolean lastPhaseNeeded = Math.max(redWidth, redHeight) > TILE_SIZE;
-                if (lastPhaseNeeded) {
-                    //prepare empty image for the last phase of tiling process 
-                    final ImageTypeSpecifier imageType = imageReader.getImageTypes(0).next();
-                    int bufferedImageType = imageType.getBufferedImageType();
-                    if (bufferedImageType == BufferedImage.TYPE_CUSTOM) {
-                        bufferedImageType = BufferedImage.TYPE_INT_RGB;
-                    }
-                    lastPhaseImage = new BufferedImage(redWidth, redHeight, bufferedImageType);
-                }
-                final int xcount = (int) Math.ceil((float) getImageWidth() / (float) megaTileSize);
-                final int ycount = (int) Math.ceil((float) getImageHeight() / (float) megaTileSize);
-                final int imageZoomLevels = getImageZoomLevels();
-                final int zoomFactor = megaTileSize / TILE_SIZE;
+    private static BufferedImage stichTiles(final BufferedImage stitchImage, final BufferedImage tileImage, final int x, final int y) {
+        final Graphics graphics = stitchImage.getGraphics();
+        graphics.drawImage(tileImage, x, y, null);
+        return stitchImage;
+    }
 
-                for (int x = 0; x < xcount; x++) {
-                    for (int y = 0; y < ycount; y++) {
-                        LOGGER.debug("create new mega tile (" + x + "," + y + ")");
-                        final int xpos = x * megaTileSize;
-                        final int width = Math.min(megaTileSize, getImageWidth() - xpos);
-                        final int ypos = y * megaTileSize;
-                        final int height = Math.min(megaTileSize, getImageHeight() - ypos);
-                        final BufferedImage megaTile = MCRImage.getTileOfFile(imageReader, xpos, ypos, width, height);
-                        LOGGER.debug("megaTile create - start tiling");
-                        // stitch
-                        final BufferedImage tile = writeTiles(zout, megaTile, x, y, imageZoomLevels, zoomFactor, stopOnZoomLevel);
-                        if (lastPhaseNeeded) {
-                            stichTiles(lastPhaseImage, tile, x * TILE_SIZE, y * TILE_SIZE);
-                        }
-                    }
-                }
-                if (lastPhaseNeeded) {
-                    lastPhaseImage = scaleBufferedImage(lastPhaseImage);
-                    final int lastPhaseZoomLevels = getZoomLevels(lastPhaseImage.getHeight(), lastPhaseImage.getWidth());
-                    writeTiles(zout, lastPhaseImage, 0, 0, lastPhaseZoomLevels, 0, 0);
-                }
-                writeMetaData(zout);
-            }
-        } finally {
-            // do we need to set the reader and writer to null?? like setImageReader(null) explicitly
-            if (imageReader != null)
-                imageReader.dispose();
+    @Override
+    protected void doTile(final ImageReader imageReader, final ZipOutputStream zout) throws IOException {
+        final int redWidth = (int) Math.ceil(getImageWidth() / ((double) megaTileSize / TILE_SIZE));
+        final int redHeight = (int) Math.ceil(getImageHeight() / ((double) megaTileSize / TILE_SIZE));
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("reduced size: " + redWidth + "x" + redHeight);
         }
-        final MCRTiledPictureProps imageProperties = getImageProperties();
-        LOGGER.info(MessageFormat.format("Finished tiling of {0}:{1}", super.derivate, super.imagePath));
-        return imageProperties;
+        final int stopOnZoomLevel = getZoomLevels(redWidth, redHeight);
+        BufferedImage lastPhaseImage = null;
+        final boolean lastPhaseNeeded = Math.max(redWidth, redHeight) > TILE_SIZE;
+        if (lastPhaseNeeded) {
+            //prepare empty image for the last phase of tiling process 
+            final ImageTypeSpecifier imageType = imageReader.getImageTypes(0).next();
+            int bufferedImageType = imageType.getBufferedImageType();
+            if (bufferedImageType == BufferedImage.TYPE_CUSTOM) {
+                bufferedImageType = BufferedImage.TYPE_INT_RGB;
+            }
+            lastPhaseImage = new BufferedImage(redWidth, redHeight, bufferedImageType);
+        }
+        final int xcount = (int) Math.ceil((float) getImageWidth() / (float) megaTileSize);
+        final int ycount = (int) Math.ceil((float) getImageHeight() / (float) megaTileSize);
+        final int imageZoomLevels = getImageZoomLevels();
+        final int zoomFactor = megaTileSize / TILE_SIZE;
+
+        for (int x = 0; x < xcount; x++) {
+            for (int y = 0; y < ycount; y++) {
+                LOGGER.debug("create new mega tile (" + x + "," + y + ")");
+                final int xpos = x * megaTileSize;
+                final int width = Math.min(megaTileSize, getImageWidth() - xpos);
+                final int ypos = y * megaTileSize;
+                final int height = Math.min(megaTileSize, getImageHeight() - ypos);
+                final BufferedImage megaTile = MCRImage.getTileOfFile(imageReader, xpos, ypos, width, height);
+                LOGGER.debug("megaTile create - start tiling");
+                // stitch
+                final BufferedImage tile = writeTiles(zout, megaTile, x, y, imageZoomLevels, zoomFactor, stopOnZoomLevel);
+                if (lastPhaseNeeded) {
+                    stichTiles(lastPhaseImage, tile, x * TILE_SIZE, y * TILE_SIZE);
+                }
+            }
+        }
+        if (lastPhaseNeeded) {
+            lastPhaseImage = scaleBufferedImage(lastPhaseImage);
+            final int lastPhaseZoomLevels = getZoomLevels(lastPhaseImage.getHeight(), lastPhaseImage.getWidth());
+            writeTiles(zout, lastPhaseImage, 0, 0, lastPhaseZoomLevels, 0, 0);
+        }
     }
 
     @Override
     protected void handleSizeChanged() {
+        super.handleSizeChanged();
         final short zoomLevelAtATime = getZoomLevelPerStep(getImageWidth(), getImageHeight());
         setZoomLevelPerStep(zoomLevelAtATime);
         LOGGER.debug("Using mega tile size of " + megaTileSize + "px for image sized " + getImageWidth() + "x" + getImageHeight());
@@ -155,12 +139,6 @@ class MCRMemSaveImage extends MCRImage {
     private void setZoomLevelPerStep(final short zoomLevel) {
         zoomLevelPerStep = zoomLevel;
         megaTileSize = MCRImage.TILE_SIZE * (int) Math.pow(2, zoomLevelPerStep); //4096x4096 if 4
-    }
-
-    private static BufferedImage stichTiles(final BufferedImage stitchImage, final BufferedImage tileImage, final int x, final int y) {
-        final Graphics graphics = stitchImage.getGraphics();
-        graphics.drawImage(tileImage, x, y, null);
-        return stitchImage;
     }
 
     private BufferedImage writeTiles(final ZipOutputStream zout, final BufferedImage megaTile, final int x, final int y, final int imageZoomLevels,

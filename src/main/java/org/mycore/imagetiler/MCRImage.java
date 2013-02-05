@@ -25,13 +25,13 @@ import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
-import java.awt.image.RenderedImage;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.text.MessageFormat;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -141,7 +141,7 @@ public class MCRImage {
 
     private int imageWidth;
 
-    private ImageWriter imageWriter;
+    private final ImageWriter imageWriter;
 
     private int imageZoomLevels;
 
@@ -165,8 +165,8 @@ public class MCRImage {
     protected MCRImage(final File file, final String derivateID, final String relImagePath) {
         imageFile = file;
         derivate = derivateID;
-        this.imagePath = relImagePath;
-        setImageWriter(createJPEGImageWriter());
+        imagePath = relImagePath;
+        imageWriter = ImageIO.getImageWritersBySuffix("jpeg").next();
     }
 
     /**
@@ -252,139 +252,56 @@ public class MCRImage {
         return maxZoom;
     }
 
-    /**
-     * @return the height of the image
-     */
-    public int getImageHeight() {
-        return imageHeight;
+    static ImageReader createImageReader(final RandomAccessFile imageFile) throws IOException {
+        final ImageInputStream imageInputStream = ImageIO.createImageInputStream(imageFile);
+        final Iterator<ImageReader> readers = ImageIO.getImageReaders(imageInputStream);
+        if (!readers.hasNext()) {
+            imageInputStream.close();
+            return null;
+        }
+        final ImageReader reader = readers.next();
+        reader.setInput(imageInputStream, false);
+        return reader;
     }
 
     /**
-     * @return the width of the image
+     * Reads a rectangular area of the current image.
+     * @param x upper left x-coordinate
+     * @param y upper left y-coordinate
+     * @param width width of the area of interest
+     * @param height height of the area of interest
+     * @return area of interest
+     * @throws IOException if source file could not be read
      */
-    public int getImageWidth() {
-        return imageWidth;
-    }
+    protected static BufferedImage getTileOfFile(final ImageReader reader, final int x, final int y, final int width, final int height) throws IOException {
+        final ImageReadParam param = reader.getDefaultReadParam();
+        final Rectangle srcRegion = new Rectangle(x, y, width, height);
+        param.setSourceRegion(srcRegion);
 
-    /**
-     * @return the amount of generated zoom levels
-     */
-    public int getImageZoomLevels() {
-        return imageZoomLevels;
-    }
-
-    /**
-     * set directory of the generated .iview2 file.
-     * @param tileDir a base directory where all tiles of all derivates are stored
-     */
-    public void setTileDir(final File tileDir) {
-        this.tileBaseDir = tileDir;
-    }
-
-    /**
-     * starts the tile process.
-     * 
-     * @return properties of image and generated tiles  
-     * @throws IOException that occurs during tile process
-     */
-    public MCRTiledPictureProps tile() throws IOException {
-        //the absolute Path is the docportal-directory, therefore the path "../mycore/..."
-        //waterMarkFile = ImageIO.read(new File(MCRIview2Props.getProperty("Watermark")));	
-        //create JPEG ImageWriter
-        final ImageWriter curImgWriter = getImageWriter();
-        //ImageWriter created
-        ImageReader imageReader = null;
-        try (final RandomAccessFile raFile = new RandomAccessFile(imageFile, "r")) {
-            //initialize some basic variables
-            imageReader = MCRImage.createImageReader(raFile);
-            if (imageReader == null) {
-                throw new IOException("No ImageReader available for file: " + imageFile.getAbsolutePath());
-            }
-            setImageSize(imageReader);
-            BufferedImage image = getTileOfFile(imageReader, 0, 0, getImageWidth(), getImageHeight());
-            try (final ZipOutputStream zout = getZipOutputStream()) {
-                final int zoomLevels = getZoomLevels(image);
-                LOGGER.info("Will generate " + zoomLevels + " zoom levels.");
-                for (int z = zoomLevels; z >= 0; z--) {
-                    LOGGER.info("Generating zoom level " + z);
-                    //image = reformatImage(scale(image));
-                    LOGGER.info("Writing out tiles..");
-
-                    final int getMaxTileY = (int) Math.ceil((double) image.getHeight() / TILE_SIZE);
-                    final int getMaxTileX = (int) Math.ceil((double) image.getWidth() / TILE_SIZE);
-                    for (int y = 0; y <= getMaxTileY; y++) {
-                        for (int x = 0; x <= getMaxTileX; x++) {
-                            final BufferedImage tile = getTile(image, x, y);
-                            writeTile(zout, tile, x, y, z);
-                        }
-                    }
-                    if (z > 0) {
-                        image = scaleBufferedImage(image);
-                    }
-                }
-                curImgWriter.dispose();
-                //close imageOutputStream after disposing imageWriter or else application will hang
-                writeMetaData(zout);
-                return getImageProperties();
+        //BugFix for bug reported at: http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4705399
+        ImageTypeSpecifier typeToUse = null;
+        for (final Iterator<ImageTypeSpecifier> i = reader.getImageTypes(0); i.hasNext();) {
+            final ImageTypeSpecifier type = i.next();
+            if (type.getColorModel().getColorSpace().isCS_sRGB()) {
+                typeToUse = type;
+                break;
             }
         }
-    }
-
-    /**
-     * currently unused: adds a watermark image to every generated tile.
-     * @param image the image tile
-     * @return the image tile with a randomly positioned watermark
-     */
-    protected BufferedImage addWatermark(final BufferedImage image) {
-        if (image.getWidth() >= waterMarkImage.getWidth() && image.getHeight() >= waterMarkImage.getHeight()) {
-            final int randx = (int) (Math.random() * (image.getWidth() - waterMarkImage.getWidth()));
-            final int randy = (int) (Math.random() * (image.getHeight() - waterMarkImage.getHeight()));
-            image.createGraphics().drawImage(waterMarkImage, randx, randy, waterMarkImage.getWidth(), waterMarkImage.getHeight(), null);
+        if (typeToUse != null) {
+            param.setDestinationType(typeToUse);
+            //End Of BugFix
         }
-        return image;
-    }
 
-    /**
-     * @return a {@link ImageWriter} for JPEG image files
-     */
-    protected ImageWriter createJPEGImageWriter() {
-        final ImageWriter jpegWriter = ImageIO.getImageWritersBySuffix("jpeg").next();
-        return jpegWriter;
-    }
-
-    /**
-     * @return {@link MCRTiledPictureProps} instance for the current image
-     */
-    protected MCRTiledPictureProps getImageProperties() {
-        final MCRTiledPictureProps picProps = new MCRTiledPictureProps();
-        picProps.width = getImageWidth();
-        picProps.height = getImageHeight();
-        picProps.zoomlevel = getImageZoomLevels();
-        picProps.tilesCount = imageTilesCount.get();
-        return picProps;
-    }
-
-    /**
-     * @return the current {@link ImageWriter} used for the tiles
-     */
-    protected ImageWriter getImageWriter() {
-        return imageWriter;
-    }
-
-    /**
-     * creates a {@link ZipOutputStream} to write image tiles and metadata to.
-     * @return write ready ZIP output stream
-     * @throws FileNotFoundException if tile directory or image file does not exist and cannot be created
-     */
-    protected ZipOutputStream getZipOutputStream() throws FileNotFoundException {
-        final File iviewFile = getTiledFile(tileBaseDir, derivate, imagePath);
-        LOGGER.info("Saving tiles in " + iviewFile.getAbsolutePath());
-        if (iviewFile.getParentFile().exists() || iviewFile.getParentFile().mkdirs()) {
-            final ZipOutputStream zout = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(iviewFile)));
-            return zout;
-        } else {
-            throw new FileNotFoundException("Cannot create directory " + iviewFile.getParentFile());
+        BufferedImage tile = reader.read(0, param);
+        if (tile.getColorModel().getPixelSize() > JPEG_CM_PIXEL_SIZE) {
+            // convert to 24 bit
+            LOGGER.info("Converting image to 24 bit color depth");
+            final BufferedImage newTile = new BufferedImage(tile.getWidth(), tile.getHeight(), BufferedImage.TYPE_INT_RGB);
+            newTile.createGraphics().drawImage(tile, 0, 0, tile.getWidth(), tile.getHeight(), null);
+            tile = newTile;
         }
+
+        return tile;
     }
 
     /**
@@ -413,27 +330,99 @@ public class MCRImage {
     }
 
     /**
-     * sets the image height.
-     * @param imgHeight height of the image
+     * @return the height of the image
      */
-    protected void setImageHeight(final int imgHeight) {
-        this.imageHeight = imgHeight;
+    public int getImageHeight() {
+        return imageHeight;
     }
 
     /**
-     * sets the image width.
-     * @param imgWidth width of the image
+     * @return the width of the image
      */
-    protected void setImageWidth(final int imgWidth) {
-        this.imageWidth = imgWidth;
+    public int getImageWidth() {
+        return imageWidth;
     }
 
     /**
-     * sets the image zoom levels.
-     * @param imgZoomLevels amount of zoom levels of the image
+     * @return the amount of generated zoom levels
      */
-    protected void setImageZoomLevels(final int imgZoomLevels) {
-        this.imageZoomLevels = imgZoomLevels;
+    public int getImageZoomLevels() {
+        return imageZoomLevels;
+    }
+
+    /**
+     * set directory of the generated .iview2 file.
+     * @param tileDir a base directory where all tiles of all derivates are stored
+     */
+    public void setTileDir(final File tileDir) {
+        tileBaseDir = tileDir;
+    }
+
+    /**
+     * starts the tile process.
+     * 
+     * @return properties of image and generated tiles  
+     * @throws IOException that occurs during tile process
+     */
+    public MCRTiledPictureProps tile() throws IOException {
+        LOGGER.info(MessageFormat.format("Start tiling of {0}:{1}", derivate, imagePath));
+        //waterMarkFile = ImageIO.read(new File(MCRIview2Props.getProperty("Watermark")));	
+        try (final RandomAccessFile raFile = new RandomAccessFile(imageFile, "r")) {
+            //initialize some basic variables
+            final ImageReader imageReader = MCRImage.createImageReader(raFile);
+            if (imageReader == null) {
+                throw new IOException("No ImageReader available for file: " + imageFile.getAbsolutePath());
+            }
+            try (final ZipOutputStream zout = getZipOutputStream()) {
+                setImageSize(imageReader);
+                doTile(imageReader, zout);
+                writeMetaData(zout);
+            } finally {
+                imageReader.dispose();
+            }
+        }
+        final MCRTiledPictureProps imageProperties = getImageProperties();
+        LOGGER.info(MessageFormat.format("Finished tiling of {0}:{1}", derivate, imagePath));
+        return imageProperties;
+    }
+
+    protected void doTile(final ImageReader imageReader, final ZipOutputStream zout) throws IOException {
+        BufferedImage image = getTileOfFile(imageReader, 0, 0, getImageWidth(), getImageHeight());
+        final int zoomLevels = getZoomLevels(getImageWidth(), getImageHeight());
+        LOGGER.info("Will generate " + zoomLevels + " zoom levels.");
+        for (int z = zoomLevels; z >= 0; z--) {
+            LOGGER.info("Generating zoom level " + z);
+            //image = reformatImage(scale(image));
+            LOGGER.info("Writing out tiles..");
+
+            final int getMaxTileY = (int) Math.ceil((double) image.getHeight() / TILE_SIZE);
+            final int getMaxTileX = (int) Math.ceil((double) image.getWidth() / TILE_SIZE);
+            for (int y = 0; y <= getMaxTileY; y++) {
+                for (int x = 0; x <= getMaxTileX; x++) {
+                    final BufferedImage tile = getTile(image, x, y);
+                    writeTile(zout, tile, x, y, z);
+                }
+            }
+            if (z > 0) {
+                image = scaleBufferedImage(image);
+            }
+        }
+    }
+
+    /**
+     * @return {@link MCRTiledPictureProps} instance for the current image
+     */
+    protected MCRTiledPictureProps getImageProperties() {
+        final MCRTiledPictureProps picProps = new MCRTiledPictureProps();
+        picProps.width = getImageWidth();
+        picProps.height = getImageHeight();
+        picProps.zoomlevel = getImageZoomLevels();
+        picProps.tilesCount = imageTilesCount.get();
+        return picProps;
+    }
+
+    protected void handleSizeChanged() {
+        setImageZoomLevels(getZoomLevels(getImageWidth(), getImageHeight()));
     }
 
     /**
@@ -494,6 +483,21 @@ public class MCRImage {
         }
     }
 
+    /**
+     * currently unused: adds a watermark image to every generated tile.
+     * @param image the image tile
+     * @return the image tile with a randomly positioned watermark
+     */
+    @SuppressWarnings("unused")
+    private BufferedImage addWatermark(final BufferedImage image) {
+        if (image.getWidth() >= waterMarkImage.getWidth() && image.getHeight() >= waterMarkImage.getHeight()) {
+            final int randx = (int) (Math.random() * (image.getWidth() - waterMarkImage.getWidth()));
+            final int randy = (int) (Math.random() * (image.getHeight() - waterMarkImage.getHeight()));
+            image.createGraphics().drawImage(waterMarkImage, randx, randy, waterMarkImage.getWidth(), waterMarkImage.getHeight(), null);
+        }
+        return image;
+    }
+
     private BufferedImage getTile(final BufferedImage image, final int x, final int y) {
         int tileWidth = image.getWidth() - TILE_SIZE * x;
         int tileHeight = image.getHeight() - TILE_SIZE * y;
@@ -510,34 +514,28 @@ public class MCRImage {
 
     }
 
-    private int getZoomLevels(final RenderedImage image) {
-        int maxDim = image.getHeight() > image.getWidth() ? image.getHeight() : image.getWidth();
-        LOGGER.info("maximum dimension: " + maxDim);
-        int zoomLevel = 0;
-        while (maxDim > TILE_SIZE) {
-            zoomLevel++;
-            maxDim = maxDim / DIRECTORY_PART_LEN;
+    /**
+     * creates a {@link ZipOutputStream} to write image tiles and metadata to.
+     * @return write ready ZIP output stream
+     * @throws FileNotFoundException if tile directory or image file does not exist and cannot be created
+     */
+    private ZipOutputStream getZipOutputStream() throws FileNotFoundException {
+        final File iviewFile = getTiledFile(tileBaseDir, derivate, imagePath);
+        LOGGER.info("Saving tiles in " + iviewFile.getAbsolutePath());
+        if (iviewFile.getParentFile().exists() || iviewFile.getParentFile().mkdirs()) {
+            final ZipOutputStream zout = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(iviewFile)));
+            return zout;
+        } else {
+            throw new FileNotFoundException("Cannot create directory " + iviewFile.getParentFile());
         }
-        setImageHeight(image.getHeight());
-        setImageWidth(image.getWidth());
-        setImageZoomLevels(zoomLevel);
-        return zoomLevel;
     }
 
-    private void setImageWriter(final ImageWriter imgWriter) {
-        this.imageWriter = imgWriter;
-    }
-
-    private void writeImageIoTile(final ZipOutputStream zout, final BufferedImage tile) throws IOException {
-        final ImageWriter imgWriter = getImageWriter();
-        try (final ImageOutputStream imageOutputStream = ImageIO.createImageOutputStream(zout)) {
-            imgWriter.setOutput(imageOutputStream);
-            //tile = addWatermark(scaleBufferedImage(tile));        
-            final IIOImage iioImage = new IIOImage(tile, null, null);
-            imgWriter.write(null, iioImage, imageWriteParam);
-        } finally {
-            imgWriter.reset();
-        }
+    /**
+     * sets the image height.
+     * @param imgHeight height of the image
+     */
+    private void setImageHeight(final int imgHeight) {
+        imageHeight = imgHeight;
     }
 
     /**
@@ -547,68 +545,37 @@ public class MCRImage {
      * @param imgReader
      * @throws IOException
      */
-    protected void setImageSize(final ImageReader imgReader) {
-        try {
-            setImageHeight(imgReader.getHeight(0));
-            setImageWidth(imgReader.getWidth(0));
-            handleSizeChanged();
-        } catch (final IOException e) {
-            LOGGER.error(e);
-        }
-    }
-
-    protected void handleSizeChanged() {
-    }
-
-    static ImageReader createImageReader(final RandomAccessFile imageFile) throws IOException {
-        ImageInputStream imageInputStream = ImageIO.createImageInputStream(imageFile);
-        final Iterator<ImageReader> readers = ImageIO.getImageReaders(imageInputStream);
-        if (!readers.hasNext()) {
-            imageInputStream.close();
-            return null;
-        }
-        final ImageReader reader = readers.next();
-        reader.setInput(imageInputStream, false);
-        return reader;
+    private void setImageSize(final ImageReader imgReader) throws IOException {
+        setImageHeight(imgReader.getHeight(0));
+        setImageWidth(imgReader.getWidth(0));
+        handleSizeChanged();
     }
 
     /**
-     * Reads a rectangular area of the current image.
-     * @param x upper left x-coordinate
-     * @param y upper left y-coordinate
-     * @param width width of the area of interest
-     * @param height height of the area of interest
-     * @return area of interest
-     * @throws IOException if source file could not be read
+     * sets the image width.
+     * @param imgWidth width of the image
      */
-    protected static BufferedImage getTileOfFile(final ImageReader reader, final int x, final int y, final int width, final int height) throws IOException {
-        final ImageReadParam param = reader.getDefaultReadParam();
-        final Rectangle srcRegion = new Rectangle(x, y, width, height);
-        param.setSourceRegion(srcRegion);
+    private void setImageWidth(final int imgWidth) {
+        imageWidth = imgWidth;
+    }
 
-        //BugFix for bug reported at: http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4705399
-        ImageTypeSpecifier typeToUse = null;
-        for (final Iterator<ImageTypeSpecifier> i = reader.getImageTypes(0); i.hasNext();) {
-            final ImageTypeSpecifier type = i.next();
-            if (type.getColorModel().getColorSpace().isCS_sRGB()) {
-                typeToUse = type;
-                break;
-            }
-        }
-        if (typeToUse != null) {
-            param.setDestinationType(typeToUse);
-            //End Of BugFix
-        }
+    /**
+     * sets the image zoom levels.
+     * @param imgZoomLevels amount of zoom levels of the image
+     */
+    private void setImageZoomLevels(final int imgZoomLevels) {
+        imageZoomLevels = imgZoomLevels;
+    }
 
-        BufferedImage tile = reader.read(0, param);
-        if (tile.getColorModel().getPixelSize() > JPEG_CM_PIXEL_SIZE) {
-            // convert to 24 bit
-            LOGGER.info("Converting image to 24 bit color depth");
-            final BufferedImage newTile = new BufferedImage(tile.getWidth(), tile.getHeight(), BufferedImage.TYPE_INT_RGB);
-            newTile.createGraphics().drawImage(tile, 0, 0, tile.getWidth(), tile.getHeight(), null);
-            tile = newTile;
+    private void writeImageIoTile(final ZipOutputStream zout, final BufferedImage tile) throws IOException {
+        final ImageWriter imgWriter = imageWriter;
+        try (final ImageOutputStream imageOutputStream = ImageIO.createImageOutputStream(zout)) {
+            imgWriter.setOutput(imageOutputStream);
+            //tile = addWatermark(scaleBufferedImage(tile));        
+            final IIOImage iioImage = new IIOImage(tile, null, null);
+            imgWriter.write(null, iioImage, imageWriteParam);
+        } finally {
+            imgWriter.reset();
         }
-
-        return tile;
     }
 }
