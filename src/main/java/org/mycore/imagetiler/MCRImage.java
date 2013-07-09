@@ -177,7 +177,8 @@ public class MCRImage {
      * @return new instance of MCRImage representing <code>file</code>
      * @throws IOException if access to image file is not possible
      */
-    public static MCRImage getInstance(final File file, final String derivateID, final String imagePath) throws IOException {
+    public static MCRImage getInstance(final File file, final String derivateID, final String imagePath)
+        throws IOException {
         return new MCRMemSaveImage(file, derivateID, imagePath);
     }
 
@@ -217,8 +218,8 @@ public class MCRImage {
         }
         final String lastPart = idParts[idParts.length - 1];
         if (lastPart.length() > MIN_FILENAME_SUFFIX_LEN) {
-            tileFile = new File(tileFile, lastPart.substring(lastPart.length() - DIRECTORY_PART_LEN * 2, lastPart.length()
-                    - DIRECTORY_PART_LEN));
+            tileFile = new File(tileFile, lastPart.substring(lastPart.length() - DIRECTORY_PART_LEN * 2,
+                lastPart.length() - DIRECTORY_PART_LEN));
             tileFile = new File(tileFile, lastPart.substring(lastPart.length() - DIRECTORY_PART_LEN, lastPart.length()));
         } else {
             tileFile = new File(tileFile, lastPart);
@@ -274,8 +275,8 @@ public class MCRImage {
      * @return area of interest
      * @throws IOException if source file could not be read
      */
-    protected static BufferedImage getTileOfFile(final ImageReader reader, final int x, final int y, final int width, final int height)
-            throws IOException {
+    protected static BufferedImage getTileOfFile(final ImageReader reader, final int x, final int y, final int width,
+        final int height) throws IOException {
         final ImageReadParam param = reader.getDefaultReadParam();
         final Rectangle srcRegion = new Rectangle(x, y, width, height);
         param.setSourceRegion(srcRegion);
@@ -299,9 +300,10 @@ public class MCRImage {
         if (pixelSize > JPEG_CM_PIXEL_SIZE || tile.getType() == BufferedImage.TYPE_CUSTOM) {
             // convert to 24 bit
             String msg = "Converting image to 24 bit color depth: "
-                    + (pixelSize > JPEG_CM_PIXEL_SIZE ? ("Color depth " + pixelSize) : "Image Type is 'CUSTOM'");
+                + (pixelSize > JPEG_CM_PIXEL_SIZE ? "Color depth " + pixelSize : "Image type is 'CUSTOM'");
             LOGGER.info(msg);
-            final BufferedImage newTile = new BufferedImage(tile.getWidth(), tile.getHeight(), BufferedImage.TYPE_INT_RGB);
+            final BufferedImage newTile = new BufferedImage(tile.getWidth(), tile.getHeight(),
+                BufferedImage.TYPE_INT_RGB);
             Graphics2D graphics2d = newTile.createGraphics();
             try {
                 graphics2d.drawImage(tile, 0, 0, tile.getWidth(), tile.getHeight(), null);
@@ -324,11 +326,7 @@ public class MCRImage {
         final int height = image.getHeight();
         final int newWidth = (int) Math.ceil(width / 2d);
         final int newHeight = (int) Math.ceil(height / 2d);
-        int imageType = image.getType();
-        if (imageType == BufferedImage.TYPE_CUSTOM) {
-            imageType = BufferedImage.TYPE_INT_RGB;
-        }
-        final BufferedImage bicubic = new BufferedImage(newWidth, newHeight, imageType);
+        final BufferedImage bicubic = new BufferedImage(newWidth, newHeight, image.getType());
         final Graphics2D bg = bicubic.createGraphics();
         bg.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
         bg.scale(ZOOM_FACTOR, ZOOM_FACTOR);
@@ -479,11 +477,11 @@ public class MCRImage {
      * @throws IOException Exception during ZIP output
      */
     protected void writeTile(final ZipOutputStream zout, final BufferedImage tile, final int x, final int y, final int z)
-            throws IOException {
+        throws IOException {
         if (tile != null) {
             try {
-                final StringBuilder tileName = new StringBuilder(Integer.toString(z)).append('/').append(y).append('/').append(x)
-                        .append(".jpg");
+                final StringBuilder tileName = new StringBuilder(Integer.toString(z)).append('/').append(y).append('/')
+                    .append(x).append(".jpg");
                 final ZipEntry ze = new ZipEntry(tileName.toString());
                 zout.putNextEntry(ze);
                 writeImageIoTile(zout, tile);
@@ -504,7 +502,8 @@ public class MCRImage {
         if (image.getWidth() >= waterMarkImage.getWidth() && image.getHeight() >= waterMarkImage.getHeight()) {
             final int randx = (int) (Math.random() * (image.getWidth() - waterMarkImage.getWidth()));
             final int randy = (int) (Math.random() * (image.getHeight() - waterMarkImage.getHeight()));
-            image.createGraphics().drawImage(waterMarkImage, randx, randy, waterMarkImage.getWidth(), waterMarkImage.getHeight(), null);
+            image.createGraphics().drawImage(waterMarkImage, randx, randy, waterMarkImage.getWidth(),
+                waterMarkImage.getHeight(), null);
         }
         return image;
     }
