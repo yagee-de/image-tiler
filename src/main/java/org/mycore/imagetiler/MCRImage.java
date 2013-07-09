@@ -217,7 +217,8 @@ public class MCRImage {
         }
         final String lastPart = idParts[idParts.length - 1];
         if (lastPart.length() > MIN_FILENAME_SUFFIX_LEN) {
-            tileFile = new File(tileFile, lastPart.substring(lastPart.length() - DIRECTORY_PART_LEN * 2, lastPart.length() - DIRECTORY_PART_LEN));
+            tileFile = new File(tileFile, lastPart.substring(lastPart.length() - DIRECTORY_PART_LEN * 2, lastPart.length()
+                    - DIRECTORY_PART_LEN));
             tileFile = new File(tileFile, lastPart.substring(lastPart.length() - DIRECTORY_PART_LEN, lastPart.length()));
         } else {
             tileFile = new File(tileFile, lastPart);
@@ -273,7 +274,8 @@ public class MCRImage {
      * @return area of interest
      * @throws IOException if source file could not be read
      */
-    protected static BufferedImage getTileOfFile(final ImageReader reader, final int x, final int y, final int width, final int height) throws IOException {
+    protected static BufferedImage getTileOfFile(final ImageReader reader, final int x, final int y, final int width, final int height)
+            throws IOException {
         final ImageReadParam param = reader.getDefaultReadParam();
         final Rectangle srcRegion = new Rectangle(x, y, width, height);
         param.setSourceRegion(srcRegion);
@@ -293,14 +295,21 @@ public class MCRImage {
         }
 
         BufferedImage tile = reader.read(0, param);
-        if (tile.getColorModel().getPixelSize() > JPEG_CM_PIXEL_SIZE) {
+        int pixelSize = tile.getColorModel().getPixelSize();
+        if (pixelSize > JPEG_CM_PIXEL_SIZE || tile.getType() == BufferedImage.TYPE_CUSTOM) {
             // convert to 24 bit
-            LOGGER.info("Converting image to 24 bit color depth");
+            String msg = "Converting image to 24 bit color depth: "
+                    + (pixelSize > JPEG_CM_PIXEL_SIZE ? ("Color depth " + pixelSize) : "Image Type is 'CUSTOM'");
+            LOGGER.info(msg);
             final BufferedImage newTile = new BufferedImage(tile.getWidth(), tile.getHeight(), BufferedImage.TYPE_INT_RGB);
-            newTile.createGraphics().drawImage(tile, 0, 0, tile.getWidth(), tile.getHeight(), null);
+            Graphics2D graphics2d = newTile.createGraphics();
+            try {
+                graphics2d.drawImage(tile, 0, 0, tile.getWidth(), tile.getHeight(), null);
+            } finally {
+                graphics2d.dispose();
+            }
             tile = newTile;
         }
-
         return tile;
     }
 
@@ -469,10 +478,12 @@ public class MCRImage {
      * @param z zoom level
      * @throws IOException Exception during ZIP output
      */
-    protected void writeTile(final ZipOutputStream zout, final BufferedImage tile, final int x, final int y, final int z) throws IOException {
+    protected void writeTile(final ZipOutputStream zout, final BufferedImage tile, final int x, final int y, final int z)
+            throws IOException {
         if (tile != null) {
             try {
-                final StringBuilder tileName = new StringBuilder(Integer.toString(z)).append('/').append(y).append('/').append(x).append(".jpg");
+                final StringBuilder tileName = new StringBuilder(Integer.toString(z)).append('/').append(y).append('/').append(x)
+                        .append(".jpg");
                 final ZipEntry ze = new ZipEntry(tileName.toString());
                 zout.putNextEntry(ze);
                 writeImageIoTile(zout, tile);
@@ -569,6 +580,9 @@ public class MCRImage {
 
     private void writeImageIoTile(final ZipOutputStream zout, final BufferedImage tile) throws IOException {
         final ImageWriter imgWriter = imageWriter;
+        if (tile.getType() == BufferedImage.TYPE_CUSTOM) {
+            throw new IOException("Do not know how to handle image type 'CUSTOM'");
+        }
         try (final ImageOutputStream imageOutputStream = ImageIO.createImageOutputStream(zout)) {
             imgWriter.setOutput(imageOutputStream);
             //tile = addWatermark(scaleBufferedImage(tile));        
