@@ -337,6 +337,82 @@ public class MCRImage {
     }
 
     /**
+     * Returns a {@link BufferedImage#getType()} response, where BufferedImage.TYPE_CUSTOM is translated to compatible image type.
+     * @param imageReader with an image on index 0
+     * @throws IOException
+     */
+    public static int getImageType(final ImageReader imageReader) throws IOException {
+        Iterator<ImageTypeSpecifier> imageTypes = imageReader.getImageTypes(0);
+        int imageType = BufferedImage.TYPE_INT_RGB;
+        while (imageTypes.hasNext()) {
+            final ImageTypeSpecifier imageTypeSpec = imageTypes.next();
+            if (imageTypeSpec.getBufferedImageType() != BufferedImage.TYPE_CUSTOM) {
+                //best fit
+                LOGGER.debug("Pretty sure we should use " + imageTypeSpec.getBufferedImageType());
+                imageType = imageTypeSpec.getBufferedImageType();
+                break;
+            } else {
+                int pixelSize = imageTypeSpec.getColorModel().getPixelSize();
+                if (pixelSize >= 8) {
+                    LOGGER.debug("Quite sure we should use TYPE_INT_RGB for a pixel size of " + pixelSize);
+                    imageType = BufferedImage.TYPE_INT_RGB;
+                } else if (pixelSize == 8) {
+                    if (imageTypeSpec.getColorModel().getNumColorComponents() > 1) {
+                        LOGGER.debug("Quite sure we should use TYPE_INT_RGB for a pixel size of " + pixelSize);
+                        imageType = BufferedImage.TYPE_INT_RGB;
+                    } else {
+                        LOGGER
+                            .debug("Quite sure we should use TYPE_BYTE_GRAY as there is only one color component present");
+                        imageType = BufferedImage.TYPE_BYTE_GRAY;
+                    }
+                } else if (pixelSize == 1) {
+                    LOGGER.debug("Quite sure we should use TYPE_BYTE_GRAY as this image is binary.");
+                    imageType = BufferedImage.TYPE_BYTE_GRAY;
+                } else {
+                    LOGGER.warn("Do not know how to handle a pixel size of " + pixelSize);
+                }
+            }
+        }
+        return imageType;
+    }
+
+    /**
+     * Returns a {@link BufferedImage#getType()} response, where BufferedImage.TYPE_CUSTOM is translated to compatible image type.
+     * @param imageReader with an image on index 0
+     * @throws IOException
+     */
+    public static int getImageType(BufferedImage image) {
+        //default value
+        int imageType = BufferedImage.TYPE_INT_RGB;
+        if (image.getType() != BufferedImage.TYPE_CUSTOM) {
+            //best fit
+            LOGGER.debug("Pretty sure we should use " + image.getType());
+            imageType = image.getType();
+        } else {
+            int pixelSize = image.getColorModel().getPixelSize();
+            if (pixelSize >= 8) {
+                LOGGER.debug("Quite sure we should use TYPE_INT_RGB for a pixel size of " + pixelSize);
+                imageType = BufferedImage.TYPE_INT_RGB;
+            } else if (pixelSize == 8) {
+                if (image.getColorModel().getNumColorComponents() > 1) {
+                    LOGGER.debug("Quite sure we should use TYPE_INT_RGB for a pixel size of " + pixelSize);
+                    imageType = BufferedImage.TYPE_INT_RGB;
+                } else {
+                    LOGGER
+                        .debug("Quite sure we should use TYPE_BYTE_GRAY as there is only one color component present");
+                    imageType = BufferedImage.TYPE_BYTE_GRAY;
+                }
+            } else if (pixelSize == 1) {
+                LOGGER.debug("Quite sure we should use TYPE_BYTE_GRAY as this image is binary.");
+                imageType = BufferedImage.TYPE_BYTE_GRAY;
+            } else {
+                LOGGER.warn("Do not know how to handle a pixel size of " + pixelSize);
+            }
+        }
+        return imageType;
+    }
+
+    /**
      * @return the height of the image
      */
     public int getImageHeight() {
