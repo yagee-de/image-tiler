@@ -536,7 +536,9 @@ public class MCRImage {
         try {
             final Element rootElement = new Element("imageinfo");
             final Document imageInfo = new Document(rootElement);
-            rootElement.setAttribute(MCRTiledPictureProps.PROP_DERIVATE, derivate);
+            if (derivate != null) {
+                rootElement.setAttribute(MCRTiledPictureProps.PROP_DERIVATE, derivate);
+            }
             rootElement.setAttribute(MCRTiledPictureProps.PROP_PATH, imagePath);
             rootElement.setAttribute(MCRTiledPictureProps.PROP_TILES, imageTilesCount.toString());
             rootElement.setAttribute(MCRTiledPictureProps.PROP_WIDTH, Integer.toString(getImageWidth()));
