@@ -71,6 +71,9 @@ class MCRMemSaveImage extends MCRImage {
 
     private static short getZoomLevelPerStep(final int width, final int height) {
         final int zoomLevels = getZoomLevels(width, height);
+        if (width * height > 1e9) {
+            LOGGER.info("GigaPIXEL!!!!");
+        }
         return (short) Math.max(MIN_STEP, (int) Math.ceil(zoomLevels / 2d));
     }
 

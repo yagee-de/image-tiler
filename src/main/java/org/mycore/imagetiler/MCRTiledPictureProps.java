@@ -133,4 +133,10 @@ public class MCRTiledPictureProps {
     public int getZoomlevel() {
         return zoomlevel;
     }
+
+    @Override
+    public String toString() {
+        return "MCRTiledPictureProps [tilesCount=" + tilesCount + ", height=" + height + ", width=" + width
+            + ", zoomlevel=" + zoomlevel + "]";
+    }
 }

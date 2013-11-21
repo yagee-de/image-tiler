@@ -1,9 +1,10 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <description>Image Tiling Library</description>
   <parent>
     <artifactId>mycore-parent</artifactId>
     <groupId>org.mycore</groupId>
-    <version>17-SNAPSHOT</version>
+    <version>18-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.mycore.iview2</groupId>
@@ -65,6 +66,19 @@
   </pluginRepositories>
   <build>
     <plugins>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>appassembler-maven-plugin</artifactId>
+        <configuration>
+          <copyConfigurationDirectory>true</copyConfigurationDirectory>
+          <programs>
+            <program>
+              <mainClass>org.mycore.imagetiler.MCRImage</mainClass>
+              <id>imageTiler</id>
+            </program>
+          </programs>
+        </configuration>
+      </plugin>
       <plugin>
         <artifactId>maven-checkstyle-plugin</artifactId>
         <executions>

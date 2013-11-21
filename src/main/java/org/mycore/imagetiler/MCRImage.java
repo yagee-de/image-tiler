@@ -212,19 +212,24 @@ public class MCRImage {
             LOGGER.debug("tileDir: " + tileDir + ", derivate: " + derivateID + ", imagePath: " + imagePath);
         }
         File tileFile = tileDir;
-        final String[] idParts = derivateID.split("_");
-        for (int i = 0; i < idParts.length - 1; i++) {
-            tileFile = new File(tileFile, idParts[i]);
-        }
-        final String lastPart = idParts[idParts.length - 1];
-        if (lastPart.length() > MIN_FILENAME_SUFFIX_LEN) {
-            tileFile = new File(tileFile, lastPart.substring(lastPart.length() - DIRECTORY_PART_LEN * 2,
-                lastPart.length() - DIRECTORY_PART_LEN));
-            tileFile = new File(tileFile, lastPart.substring(lastPart.length() - DIRECTORY_PART_LEN, lastPart.length()));
+        if (derivateID != null) {
+            final String[] idParts = derivateID.split("_");
+            for (int i = 0; i < idParts.length - 1; i++) {
+                tileFile = new File(tileFile, idParts[i]);
+            }
+            final String lastPart = idParts[idParts.length - 1];
+            if (lastPart.length() > MIN_FILENAME_SUFFIX_LEN) {
+                tileFile = new File(tileFile, lastPart.substring(lastPart.length() - DIRECTORY_PART_LEN * 2,
+                    lastPart.length() - DIRECTORY_PART_LEN));
+                tileFile = new File(tileFile, lastPart.substring(lastPart.length() - DIRECTORY_PART_LEN,
+                    lastPart.length()));
+            } else {
+                tileFile = new File(tileFile, lastPart);
+            }
+            tileFile = new File(tileFile, derivateID);
         } else {
-            tileFile = new File(tileFile, lastPart);
+            LOGGER.info("No derivate ID given. Using " + tileDir.getAbsolutePath() + " as base directory.");
         }
-        tileFile = new File(tileFile, derivateID);
         if (imagePath == null) {
             return tileFile;
         }
@@ -255,7 +260,7 @@ public class MCRImage {
     }
 
     static ImageReader createImageReader(final RandomAccessFile imageFile) throws IOException {
-        final ImageInputStream imageInputStream = ImageIO.createImageInputStream(imageFile);
+        final ImageInputStream imageInputStream = ImageIO.createImageInputStream(imageFile.getChannel());
         final Iterator<ImageReader> readers = ImageIO.getImageReaders(imageInputStream);
         if (!readers.hasNext()) {
             imageInputStream.close();
@@ -456,6 +461,7 @@ public class MCRImage {
             if (imageReader == null) {
                 throw new IOException("No ImageReader available for file: " + imageFile.getAbsolutePath());
             }
+            LOGGER.debug("ImageReader: " + imageReader.getClass());
             try (final ZipOutputStream zout = getZipOutputStream()) {
                 setImageSize(imageReader);
                 doTile(imageReader, zout);
@@ -666,5 +672,19 @@ public class MCRImage {
         } finally {
             imgWriter.reset();
         }
+    }
+
+    public static void main(String[] args) throws IOException {
+        if (args.length == 0) {
+            System.err.println("Please specify image to tile.");
+            System.exit(1);
+        }
+        File imageFile = new File(args[0]);
+        MCRImage image = getInstance(imageFile, null, imageFile.getName());
+        File tileDir = imageFile.getParentFile();
+        System.out.println("Tile to directory: " + tileDir.getAbsolutePath());
+        image.setTileDir(tileDir);
+        MCRTiledPictureProps props = image.tile();
+        System.out.println("Tiling complete: " + props);
     }
 }
