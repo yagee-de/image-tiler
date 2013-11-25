@@ -453,6 +453,7 @@ public class MCRImage {
      * @throws IOException that occurs during tile process
      */
     public MCRTiledPictureProps tile() throws IOException {
+        long start = System.nanoTime();
         LOGGER.info(MessageFormat.format("Start tiling of {0}:{1}", derivate, imagePath));
         //waterMarkFile = ImageIO.read(new File(MCRIview2Props.getProperty("Watermark")));	
         try (final RandomAccessFile raFile = new RandomAccessFile(imageFile, "r")) {
@@ -470,8 +471,11 @@ public class MCRImage {
                 imageReader.dispose();
             }
         }
+        long end = System.nanoTime();
         final MCRTiledPictureProps imageProperties = getImageProperties();
-        LOGGER.info(MessageFormat.format("Finished tiling of {0}:{1}", derivate, imagePath));
+        long pixel = imageProperties.getWidth() * imageProperties.getHeight();
+        LOGGER.info(MessageFormat.format("Finished tiling of {0}:{1} in {2} ms ({3} MPixel/s). ", derivate, imagePath,
+            (end - start) / 1e6, 1000 * pixel / (end - start)));
         return imageProperties;
     }
 
@@ -682,8 +686,11 @@ public class MCRImage {
             System.exit(1);
         }
         File imageFile = new File(args[0]);
-        MCRImage image = getInstance(imageFile, null, imageFile.getName());
-        File tileDir = imageFile.getParentFile();
+        //imagePath 
+        String imagePath = imageFile.isAbsolute() ? imageFile.getName() : imageFile.getPath();
+        File tileDir = imageFile.isAbsolute() ? imageFile.getParentFile() : new File(".");
+        String derivateId = args.length == 2 ? args[1] : null;
+        MCRImage image = getInstance(imageFile, derivateId, imagePath);
         System.out.println("Tile to directory: " + tileDir.getAbsolutePath());
         image.setTileDir(tileDir);
         MCRTiledPictureProps props = image.tile();
