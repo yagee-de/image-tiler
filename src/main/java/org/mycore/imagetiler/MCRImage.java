@@ -30,7 +30,9 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.RandomAccessFile;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.text.MessageFormat;
 import java.util.Iterator;
 import java.util.Locale;
@@ -113,9 +115,9 @@ public class MCRImage {
     protected String derivate;
 
     /**
-     * the whole image that gets tiled as a <code>File</code>.
+     * the whole image that gets tiled as a <code>Path</code>.
      */
-    protected File imageFile;
+    protected Path imageFile;
 
     /**
      * path to image relative to derivate root. (for output directory calculation)
@@ -162,7 +164,7 @@ public class MCRImage {
      * @param derivateID the derivate ID the image belongs to
      * @param relImagePath the relative path from the derivate root to the image
      */
-    protected MCRImage(final File file, final String derivateID, final String relImagePath) {
+    protected MCRImage(final Path file, final String derivateID, final String relImagePath) {
         imageFile = file;
         derivate = derivateID;
         imagePath = relImagePath;
@@ -177,7 +179,7 @@ public class MCRImage {
      * @return new instance of MCRImage representing <code>file</code>
      * @throws IOException if access to image file is not possible
      */
-    public static MCRImage getInstance(final File file, final String derivateID, final String imagePath)
+    public static MCRImage getInstance(final Path file, final String derivateID, final String imagePath)
         throws IOException {
         return new MCRMemSaveImage(file, derivateID, imagePath);
     }
@@ -259,8 +261,9 @@ public class MCRImage {
         return maxZoom;
     }
 
-    static ImageReader createImageReader(final RandomAccessFile imageFile) throws IOException {
-        final ImageInputStream imageInputStream = ImageIO.createImageInputStream(imageFile.getChannel());
+    static ImageReader createImageReader(final Path imageFile) throws IOException {
+        final ImageInputStream imageInputStream = ImageIO.createImageInputStream(Files.newByteChannel(imageFile,
+            StandardOpenOption.READ));
         final Iterator<ImageReader> readers = ImageIO.getImageReaders(imageInputStream);
         if (!readers.hasNext()) {
             imageInputStream.close();
@@ -456,20 +459,18 @@ public class MCRImage {
         long start = System.nanoTime();
         LOGGER.info(MessageFormat.format("Start tiling of {0}:{1}", derivate, imagePath));
         //waterMarkFile = ImageIO.read(new File(MCRIview2Props.getProperty("Watermark")));	
-        try (final RandomAccessFile raFile = new RandomAccessFile(imageFile, "r")) {
-            //initialize some basic variables
-            final ImageReader imageReader = MCRImage.createImageReader(raFile);
-            if (imageReader == null) {
-                throw new IOException("No ImageReader available for file: " + imageFile.getAbsolutePath());
-            }
-            LOGGER.debug("ImageReader: " + imageReader.getClass());
-            try (final ZipOutputStream zout = getZipOutputStream()) {
-                setImageSize(imageReader);
-                doTile(imageReader, zout);
-                writeMetaData(zout);
-            } finally {
-                imageReader.dispose();
-            }
+        //initialize some basic variables
+        final ImageReader imageReader = MCRImage.createImageReader(imageFile);
+        if (imageReader == null) {
+            throw new IOException("No ImageReader available for file: " + imageFile);
+        }
+        LOGGER.debug("ImageReader: " + imageReader.getClass());
+        try (final ZipOutputStream zout = getZipOutputStream()) {
+            setImageSize(imageReader);
+            doTile(imageReader, zout);
+            writeMetaData(zout);
+        } finally {
+            imageReader.dispose();
         }
         long end = System.nanoTime();
         final MCRTiledPictureProps imageProperties = getImageProperties();
@@ -690,7 +691,7 @@ public class MCRImage {
         String imagePath = imageFile.isAbsolute() ? imageFile.getName() : imageFile.getPath();
         File tileDir = imageFile.isAbsolute() ? imageFile.getParentFile() : new File(".");
         String derivateId = args.length == 2 ? args[1] : null;
-        MCRImage image = getInstance(imageFile, derivateId, imagePath);
+        MCRImage image = getInstance(imageFile.toPath(), derivateId, imagePath);
         System.out.println("Tile to directory: " + tileDir.getAbsolutePath());
         image.setTileDir(tileDir);
         MCRTiledPictureProps props = image.tile();

@@ -24,8 +24,8 @@ package org.mycore.imagetiler;
 
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
-import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.zip.ZipOutputStream;
 
 import javax.imageio.ImageReader;
@@ -56,7 +56,7 @@ class MCRMemSaveImage extends MCRImage {
      * @param relImagePath the relative path from the derivate root to the image
      * @throws IOException if {@link ImageReader} could not be instantiated
      */
-    MCRMemSaveImage(final File file, final String derivateID, final String relImagePath) throws IOException {
+    MCRMemSaveImage(final Path file, final String derivateID, final String relImagePath) throws IOException {
         super(file, derivateID, relImagePath);
     }
 
