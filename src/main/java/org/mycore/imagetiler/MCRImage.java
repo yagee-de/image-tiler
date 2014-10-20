@@ -27,11 +27,10 @@ import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.text.MessageFormat;
 import java.util.Iterator;
@@ -132,7 +131,7 @@ public class MCRImage {
     /**
      * root dir for generated directories and tiles.
      */
-    protected File tileBaseDir;
+    protected Path tileBaseDir;
 
     /**
      * currently unused: a image used to watermark every tile.
@@ -209,35 +208,35 @@ public class MCRImage {
      * @param imagePath the relative path from the derivate root to the image
      * @return tile directory of derivate if <code>imagePath</code> is null or the tile file (.iview2)
      */
-    public static File getTiledFile(final File tileDir, final String derivateID, final String imagePath) {
+    public static Path getTiledFile(final Path tileDir, final String derivateID, final String imagePath) {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("tileDir: " + tileDir + ", derivate: " + derivateID + ", imagePath: " + imagePath);
         }
-        File tileFile = tileDir;
+        Path tileFile = tileDir;
         if (derivateID != null) {
             final String[] idParts = derivateID.split("_");
             for (int i = 0; i < idParts.length - 1; i++) {
-                tileFile = new File(tileFile, idParts[i]);
+                tileFile = tileFile.resolve(idParts[i]);
             }
             final String lastPart = idParts[idParts.length - 1];
             if (lastPart.length() > MIN_FILENAME_SUFFIX_LEN) {
-                tileFile = new File(tileFile, lastPart.substring(lastPart.length() - DIRECTORY_PART_LEN * 2,
+                tileFile = tileFile.resolve(lastPart.substring(lastPart.length() - DIRECTORY_PART_LEN * 2,
                     lastPart.length() - DIRECTORY_PART_LEN));
-                tileFile = new File(tileFile, lastPart.substring(lastPart.length() - DIRECTORY_PART_LEN,
+                tileFile = tileFile.resolve(lastPart.substring(lastPart.length() - DIRECTORY_PART_LEN,
                     lastPart.length()));
             } else {
-                tileFile = new File(tileFile, lastPart);
+                tileFile = tileFile.resolve(lastPart);
             }
-            tileFile = new File(tileFile, derivateID);
+            tileFile = tileFile.resolve(derivateID);
         } else {
-            LOGGER.info("No derivate ID given. Using " + tileDir.getAbsolutePath() + " as base directory.");
+            LOGGER.info("No derivate ID given. Using " + tileDir + " as base directory.");
         }
         if (imagePath == null) {
             return tileFile;
         }
         final int pos = imagePath.lastIndexOf('.');
         final String relPath = imagePath.substring(0, pos > 0 ? pos : imagePath.length()) + ".iview2";
-        return new File(tileFile.getAbsolutePath() + "/" + relPath);
+        return tileFile.resolve(relPath);
     }
 
     /**
@@ -445,22 +444,34 @@ public class MCRImage {
      * set directory of the generated .iview2 file.
      * @param tileDir a base directory where all tiles of all derivates are stored
      */
-    public void setTileDir(final File tileDir) {
+    public void setTileDir(final Path tileDir) {
         tileBaseDir = tileDir;
     }
 
     /**
      * starts the tile process.
      * 
+     * @param eventHandler
+     *          eventHandler to control resources, may be null
      * @return properties of image and generated tiles  
      * @throws IOException that occurs during tile process
      */
-    public MCRTiledPictureProps tile() throws IOException {
+    public MCRTiledPictureProps tile(MCRTileEventHandler eventHandler) throws IOException {
         long start = System.nanoTime();
         LOGGER.info(MessageFormat.format("Start tiling of {0}:{1}", derivate, imagePath));
         //waterMarkFile = ImageIO.read(new File(MCRIview2Props.getProperty("Watermark")));	
         //initialize some basic variables
-        final ImageReader imageReader = MCRImage.createImageReader(imageFile);
+        if (eventHandler != null) {
+            eventHandler.preImageReaderCreated();
+        }
+        final ImageReader imageReader;
+        try {
+            imageReader = MCRImage.createImageReader(imageFile);
+        } finally {
+            if (eventHandler != null) {
+                eventHandler.postImageReaderCreated();
+            }
+        }
         if (imageReader == null) {
             throw new IOException("No ImageReader available for file: " + imageFile);
         }
@@ -616,17 +627,17 @@ public class MCRImage {
     /**
      * creates a {@link ZipOutputStream} to write image tiles and metadata to.
      * @return write ready ZIP output stream
+     * @throws IOException 
      * @throws FileNotFoundException if tile directory or image file does not exist and cannot be created
      */
-    private ZipOutputStream getZipOutputStream() throws FileNotFoundException {
-        final File iviewFile = getTiledFile(tileBaseDir, derivate, imagePath);
-        LOGGER.info("Saving tiles in " + iviewFile.getAbsolutePath());
-        if (iviewFile.getParentFile().exists() || iviewFile.getParentFile().mkdirs()) {
-            final ZipOutputStream zout = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(iviewFile)));
-            return zout;
-        } else {
-            throw new FileNotFoundException("Cannot create directory " + iviewFile.getParentFile());
+    private ZipOutputStream getZipOutputStream() throws IOException {
+        final Path iviewFile = getTiledFile(tileBaseDir, derivate, imagePath);
+        LOGGER.info("Saving tiles in " + iviewFile);
+        if (!Files.exists(iviewFile.getParent())) {
+            Files.createDirectories(iviewFile.getParent());
         }
+        final ZipOutputStream zout = new ZipOutputStream(new BufferedOutputStream(Files.newOutputStream(iviewFile)));
+        return zout;
     }
 
     /**
@@ -686,15 +697,15 @@ public class MCRImage {
             System.err.println("Please specify image to tile.");
             System.exit(1);
         }
-        File imageFile = new File(args[0]);
+        Path imageFile = Paths.get(args[0]);
         //imagePath 
-        String imagePath = imageFile.isAbsolute() ? imageFile.getName() : imageFile.getPath();
-        File tileDir = imageFile.isAbsolute() ? imageFile.getParentFile() : new File(".");
+        String imagePath = imageFile.isAbsolute() ? imageFile.getFileName().toString() : imageFile.toString();
+        Path tileDir = imageFile.isAbsolute() ? imageFile.getParent() : Paths.get(".");
         String derivateId = args.length == 2 ? args[1] : null;
-        MCRImage image = getInstance(imageFile.toPath(), derivateId, imagePath);
-        System.out.println("Tile to directory: " + tileDir.getAbsolutePath());
+        MCRImage image = getInstance(imageFile, derivateId, imagePath);
+        System.out.println("Tile to directory: " + tileDir.toAbsolutePath().toString());
         image.setTileDir(tileDir);
-        MCRTiledPictureProps props = image.tile();
+        MCRTiledPictureProps props = image.tile(null);
         System.out.println("Tiling complete: " + props);
     }
 }

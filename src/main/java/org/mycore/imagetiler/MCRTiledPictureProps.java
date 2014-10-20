@@ -24,10 +24,13 @@ package org.mycore.imagetiler;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
+import java.net.URI;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Collections;
 
-import org.apache.log4j.Logger;
 import org.jdom2.Document;
 import org.jdom2.Element;
 import org.jdom2.JDOMException;
@@ -66,8 +69,6 @@ public class MCRTiledPictureProps {
 
     };
 
-    private static final Logger LOGGER = Logger.getLogger(MCRTiledPictureProps.class);
-
     int tilesCount;
 
     int height;
@@ -78,31 +79,53 @@ public class MCRTiledPictureProps {
 
     /**
      * gets properties of the given <code>.iview2</code> file.
-     * Use {@link MCRImage#getTiledFile(File, String, String)} to get the {@link File} instance of the <code>.iview2</code> file.
+     * Use {@link MCRImage#getTiledFile(Path, String, String)} to get the {@link Path} instance of the <code>.iview2</code> file.
      * @param iviewFile the IView2 file
      * @return instance of the class referring <code>iviewFile</code> 
      * @throws IOException Exceptions occurs while accessing <code>iviewFile</code>.
      * @throws JDOMException Exceptions while parsing metadata (file: <code>imageinfo.xml</code>)
      */
     public static MCRTiledPictureProps getInstance(final File iviewFile) throws IOException, JDOMException {
-        try (final ZipFile zipFile = new ZipFile(iviewFile)) {
-            final ZipEntry ze = zipFile.getEntry(IMAGEINFO_XML);
-            if (ze == null) {
-                LOGGER.warn("Did not find " + IMAGEINFO_XML + " in " + iviewFile.getAbsolutePath());
-                return null;
-            }
-            //size of a tile or imageinfo.xml file is always smaller than Integer.MAX_VALUE
-            LOGGER.debug("Extracting " + ze.getName() + " size " + ze.getSize());
-            try (final InputStream zin = zipFile.getInputStream(ze)) {
-                final Document imageInfo = DOC_BUILDER.get().build(zin);
-                final Element root = imageInfo.getRootElement();
-                final MCRTiledPictureProps props = new MCRTiledPictureProps();
-                props.tilesCount = Integer.parseInt(root.getAttributeValue(PROP_TILES));
-                props.height = Integer.parseInt(root.getAttributeValue(PROP_HEIGHT));
-                props.width = Integer.parseInt(root.getAttributeValue(PROP_WIDTH));
-                props.zoomlevel = Integer.parseInt(root.getAttributeValue(PROP_ZOOM_LEVEL));
-                return props;
-            }
+        return iviewFile.isDirectory() ? getInstanceFromDirectory(iviewFile.toPath()) : getInstanceFromFile(iviewFile
+            .toPath());
+    }
+
+    /**
+     * gets properties of the given <code>.iview2</code> file.
+     * Use {@link MCRImage#getTiledFile(Path, String, String)} to get the {@link Path} instance of the <code>.iview2</code> file.
+     * @param iviewFile the IView2 file
+     * @return instance of the class referring <code>iviewFile</code> 
+     * @throws IOException Exceptions occurs while accessing <code>iviewFile</code>.
+     * @throws JDOMException Exceptions while parsing metadata (file: <code>imageinfo.xml</code>)
+     */
+    public static MCRTiledPictureProps getInstanceFromFile(Path iviewFile) throws IOException, JDOMException {
+        URI uri = URI.create("jar:" + iviewFile.toUri().toString());
+        try (FileSystem zipFileSystem = FileSystems.newFileSystem(uri, Collections.<String, Object> emptyMap(),
+            MCRTiledPictureProps.class.getClassLoader())) {
+            Path iviewFileRoot = zipFileSystem.getRootDirectories().iterator().next();
+            return getInstanceFromDirectory(iviewFileRoot);
+        }
+    }
+
+    /**
+     * gets properties of the given <code>.iview2</code> file.
+     * Use {@link MCRImage#getTiledFile(Path, String, String)} to get the {@link Path} instance of the <code>.iview2</code> file.
+     * @param iviewFileRoot the root of the iviewFile
+     * @return instance of the class referring <code>iviewFile</code> 
+     * @throws IOException Exceptions occurs while accessing <code>iviewFile</code>.
+     * @throws JDOMException Exceptions while parsing metadata (file: <code>imageinfo.xml</code>)
+     */
+    public static MCRTiledPictureProps getInstanceFromDirectory(Path iviewFileRoot) throws IOException, JDOMException {
+        Path imageInfoPath = iviewFileRoot.resolve(IMAGEINFO_XML);
+        try (final InputStream zin = Files.newInputStream(imageInfoPath)) {
+            final Document imageInfo = DOC_BUILDER.get().build(zin);
+            final Element root = imageInfo.getRootElement();
+            final MCRTiledPictureProps props = new MCRTiledPictureProps();
+            props.tilesCount = Integer.parseInt(root.getAttributeValue(PROP_TILES));
+            props.height = Integer.parseInt(root.getAttributeValue(PROP_HEIGHT));
+            props.width = Integer.parseInt(root.getAttributeValue(PROP_WIDTH));
+            props.zoomlevel = Integer.parseInt(root.getAttributeValue(PROP_ZOOM_LEVEL));
+            return props;
         }
     }
 

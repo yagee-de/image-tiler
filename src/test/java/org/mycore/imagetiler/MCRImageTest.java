@@ -25,6 +25,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.BitSet;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.zip.ZipFile;
@@ -96,21 +99,36 @@ public class MCRImageTest {
             final String derivateID = "derivateID";
             final String imagePath = "imagePath/" + FilenameUtils.getName(entry.getValue());
             final MCRImage image = new MCRMemSaveImage(file.toPath(), derivateID, imagePath);
-            image.setTileDir(tileDir);
-            image.tile();
+            image.setTileDir(tileDir.toPath());
+            final BitSet events = new BitSet(2);//pre and post event
+            image.tile(new MCRTileEventHandler() {
+
+                @Override
+                public void preImageReaderCreated() {
+                    events.flip(0);
+                }
+
+                @Override
+                public void postImageReaderCreated() {
+                    events.flip(1);
+                }
+            });
+            assertTrue("preImageReaderCreated() was not called", events.get(0));
+            assertTrue("postImageReaderCreated() was not called", events.get(1));
             assertTrue("Tile directory is not created.", tileDir.exists());
-            final File iviewFile = MCRImage.getTiledFile(tileDir, derivateID, imagePath);
-            assertTrue("IView File is not created:" + iviewFile.getAbsolutePath(), iviewFile.exists());
-            final MCRTiledPictureProps props = MCRTiledPictureProps.getInstance(iviewFile);
+            final Path iviewFile = MCRImage.getTiledFile(tileDir.toPath(), derivateID, imagePath);
+            assertTrue("IView File is not created:" + iviewFile, Files.exists(iviewFile));
+            final MCRTiledPictureProps props = MCRTiledPictureProps.getInstanceFromFile(iviewFile);
             final int tilesCount;
-            try (final ZipFile iviewImage = new ZipFile(iviewFile)) {
+            try (final ZipFile iviewImage = new ZipFile(iviewFile.toFile())) {
                 tilesCount = iviewImage.size() - 1;
             }
-            assertEquals(entry.getKey() + ": Metadata tile count does not match stored tile count.", props.getTilesCount(), tilesCount);
+            assertEquals(entry.getKey() + ": Metadata tile count does not match stored tile count.",
+                props.getTilesCount(), tilesCount);
             final int x = props.width;
             final int y = props.height;
-            assertEquals(entry.getKey() + ": Calculated tile count does not match stored tile count.", MCRImage.getTileCount(x, y),
-                    tilesCount);
+            assertEquals(entry.getKey() + ": Calculated tile count does not match stored tile count.",
+                MCRImage.getTileCount(x, y), tilesCount);
         }
     }
 }
