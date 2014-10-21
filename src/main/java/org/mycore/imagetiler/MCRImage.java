@@ -447,6 +447,18 @@ public class MCRImage {
     public void setTileDir(final Path tileDir) {
         tileBaseDir = tileDir;
     }
+    
+    /**
+     * starts the tile process.
+     * 
+     * Same as calling {@link #tile(MCRTileEventHandler)} with <code>null</code> as argument.
+     * 
+     * @return properties of image and generated tiles  
+     * @throws IOException that occurs during tile process
+     */
+    public MCRTiledPictureProps tile() throws IOException{
+        return tile(null);
+    }
 
     /**
      * starts the tile process.
