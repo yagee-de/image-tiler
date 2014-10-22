@@ -76,7 +76,7 @@ public class MCRImageTest {
         pics.put("1 pixel mega tile rest", "src/test/resources/BE_0681_0397.jpg");
         pics.put("extra small", "src/test/resources/5x5.jpg");
 
-        tileDir = new File("target/tileDir");
+        tileDir = new File("target/tileDir").getAbsoluteFile();
         System.setProperty("java.awt.headless", "true");
     }
 
@@ -131,4 +131,15 @@ public class MCRImageTest {
                 MCRImage.getTileCount(x, y), tilesCount);
         }
     }
+
+    @Test
+    public void testgetTiledFile() {
+        String final1 = "00";
+        String final2 = "01";
+        String derivateID = "junit_derivate_0000" + final1 + final2;
+        Path tiledFile = MCRImage.getTiledFile(tileDir.toPath(), derivateID, "foo/bar.tif");
+        assertEquals("Path to file is not es axpected.", tileDir.toString() + "/junit/derivate/" + final1 + "/"
+            + final2 + '/' + derivateID + "/foo/bar.iview2", tiledFile.toString());
+    }
+
 }
