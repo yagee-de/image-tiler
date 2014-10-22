@@ -140,6 +140,9 @@ public class MCRImageTest {
         Path tiledFile = MCRImage.getTiledFile(tileDir.toPath(), derivateID, "foo/bar.tif");
         assertEquals("Path to file is not es axpected.", tileDir.toString() + "/junit/derivate/" + final1 + "/"
             + final2 + '/' + derivateID + "/foo/bar.iview2", tiledFile.toString());
+        tiledFile = MCRImage.getTiledFile(tileDir.toPath(), derivateID, "/foo/bar.tif");
+        assertEquals("Path to file is not es axpected.", tileDir.toString() + "/junit/derivate/" + final1 + "/"
+            + final2 + '/' + derivateID + "/foo/bar.iview2", tiledFile.toString());
     }
 
 }

@@ -235,7 +235,9 @@ public class MCRImage {
             return tileFile;
         }
         final int pos = imagePath.lastIndexOf('.');
-        final String relPath = imagePath.substring(0, pos > 0 ? pos : imagePath.length()) + ".iview2";
+        final String relPath = imagePath.substring(imagePath.charAt(0) == '/' ? 1 : 0,
+            pos > 0 ? pos : imagePath.length())
+            + ".iview2";
         return tileFile.resolve(relPath);
     }
 
@@ -447,7 +449,7 @@ public class MCRImage {
     public void setTileDir(final Path tileDir) {
         tileBaseDir = tileDir;
     }
-    
+
     /**
      * starts the tile process.
      * 
@@ -456,7 +458,7 @@ public class MCRImage {
      * @return properties of image and generated tiles  
      * @throws IOException that occurs during tile process
      */
-    public MCRTiledPictureProps tile() throws IOException{
+    public MCRTiledPictureProps tile() throws IOException {
         return tile(null);
     }
 
