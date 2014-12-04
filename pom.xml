@@ -4,7 +4,7 @@
   <parent>
     <artifactId>mycore-parent</artifactId>
     <groupId>org.mycore</groupId>
-    <version>22</version>
+    <version>23-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.mycore.iview2</groupId>
