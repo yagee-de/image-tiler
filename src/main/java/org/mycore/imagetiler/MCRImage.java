@@ -21,13 +21,22 @@
  */
 package org.mycore.imagetiler;
 
-import java.awt.Graphics2D;
-import java.awt.Rectangle;
-import java.awt.RenderingHints;
+import org.apache.log4j.Logger;
+import org.jdom2.Document;
+import org.jdom2.Element;
+import org.jdom2.output.Format;
+import org.jdom2.output.XMLOutputter;
+
+import javax.imageio.*;
+import javax.imageio.plugins.jpeg.JPEGImageWriteParam;
+import javax.imageio.stream.ImageInputStream;
+import javax.imageio.stream.ImageOutputStream;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -38,23 +47,6 @@ import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
-
-import javax.imageio.IIOImage;
-import javax.imageio.ImageIO;
-import javax.imageio.ImageReadParam;
-import javax.imageio.ImageReader;
-import javax.imageio.ImageTypeSpecifier;
-import javax.imageio.ImageWriteParam;
-import javax.imageio.ImageWriter;
-import javax.imageio.plugins.jpeg.JPEGImageWriteParam;
-import javax.imageio.stream.ImageInputStream;
-import javax.imageio.stream.ImageOutputStream;
-
-import org.apache.log4j.Logger;
-import org.jdom2.Document;
-import org.jdom2.Element;
-import org.jdom2.output.Format;
-import org.jdom2.output.XMLOutputter;
 
 /**
  * The <code>MCRImage</code> class describes an image with different zoom levels that can be accessed by its tiles.
@@ -304,6 +296,7 @@ public class MCRImage {
             //End Of BugFix
         }
 
+
         BufferedImage tile = reader.read(0, param);
         int pixelSize = tile.getColorModel().getPixelSize();
         if (pixelSize > JPEG_CM_PIXEL_SIZE || tile.getType() == BufferedImage.TYPE_CUSTOM) {
@@ -335,7 +328,9 @@ public class MCRImage {
         final int height = image.getHeight();
         final int newWidth = (int) Math.ceil(width / 2d);
         final int newHeight = (int) Math.ceil(height / 2d);
-        final BufferedImage bicubic = new BufferedImage(newWidth, newHeight, image.getType());
+        final int type = image.getTransparency() == Transparency.OPAQUE ? BufferedImage.TYPE_INT_RGB : image.getType();
+//        final int type = image.getType();
+        final BufferedImage bicubic = new BufferedImage(newWidth, newHeight, type);
         final Graphics2D bg = bicubic.createGraphics();
         bg.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
         bg.scale(ZOOM_FACTOR, ZOOM_FACTOR);
@@ -700,6 +695,21 @@ public class MCRImage {
             imgWriter.setOutput(imageOutputStream);
             //tile = addWatermark(scaleBufferedImage(tile));        
             final IIOImage iioImage = new IIOImage(tile, null, null);
+            imgWriter.write(null, iioImage, imageWriteParam);
+        } finally {
+            imgWriter.reset();
+        }
+    }
+
+    protected void writeImageIo(final OutputStream zout, final BufferedImage image) throws IOException {
+        final ImageWriter imgWriter = imageWriter;
+        if (image.getType() == BufferedImage.TYPE_CUSTOM) {
+            throw new IOException("Do not know how to handle image type 'CUSTOM'");
+        }
+        try (final ImageOutputStream imageOutputStream = ImageIO.createImageOutputStream(zout)) {
+            imgWriter.setOutput(imageOutputStream);
+            //tile = addWatermark(scaleBufferedImage(tile));
+            final IIOImage iioImage = new IIOImage(image, null, null);
             imgWriter.write(null, iioImage, imageWriteParam);
         } finally {
             imgWriter.reset();
