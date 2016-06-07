@@ -22,21 +22,20 @@
 
 package org.mycore.imagetiler;
 
-import java.awt.Graphics;
+import org.apache.log4j.Logger;
+
+import javax.imageio.ImageReader;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.zip.ZipOutputStream;
 
-import javax.imageio.ImageReader;
-
-import org.apache.log4j.Logger;
-
 /**
  * Uses a special fast and memory saving algorithm to tile images.
  * Upper memory usage for 4GP images is about 280 MB (was 28GB),
  * 68GP would take up to 1.1 GB (was 476 GB) and and 1TP images 4.4 GB (was 7 TB).
- * 
+ *
  * @author Thomas Scheffler (yagee)
  * @author Matthias Eichner
  */
@@ -94,11 +93,7 @@ class MCRMemSaveImage extends MCRImage {
         final int stopOnZoomLevel = getZoomLevels(redWidth, redHeight);
         BufferedImage lastPhaseImage = null;
         final boolean lastPhaseNeeded = Math.max(redWidth, redHeight) > TILE_SIZE;
-        if (lastPhaseNeeded) {
-            //prepare empty image for the last phase of tiling process 
-            int imageType = getImageType(imageReader);
-            lastPhaseImage = new BufferedImage(redWidth, redHeight, imageType);
-        }
+
         final int xcount = (int) Math.ceil((float) getImageWidth() / (float) megaTileSize);
         final int ycount = (int) Math.ceil((float) getImageHeight() / (float) megaTileSize);
         final int imageZoomLevels = getImageZoomLevels();
@@ -117,6 +112,10 @@ class MCRMemSaveImage extends MCRImage {
                 final BufferedImage tile = writeTiles(zout, megaTile, x, y, imageZoomLevels, zoomFactor,
                     stopOnZoomLevel);
                 if (lastPhaseNeeded) {
+                    //prepare empty image for the last phase of tiling process
+                    if (lastPhaseImage == null) {
+                        lastPhaseImage = new BufferedImage(redWidth, redHeight, tile.getType());
+                    }
                     stichTiles(lastPhaseImage, tile, x * TILE_SIZE, y * TILE_SIZE);
                 }
             }
