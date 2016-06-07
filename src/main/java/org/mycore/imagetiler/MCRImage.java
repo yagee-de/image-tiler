@@ -21,22 +21,15 @@
  */
 package org.mycore.imagetiler;
 
-import org.apache.log4j.Logger;
-import org.jdom2.Document;
-import org.jdom2.Element;
-import org.jdom2.output.Format;
-import org.jdom2.output.XMLOutputter;
-
-import javax.imageio.*;
-import javax.imageio.plugins.jpeg.JPEGImageWriteParam;
-import javax.imageio.stream.ImageInputStream;
-import javax.imageio.stream.ImageOutputStream;
-import java.awt.*;
+import java.awt.Graphics2D;
+import java.awt.Rectangle;
+import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
+import java.awt.image.IndexColorModel;
 import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -47,6 +40,23 @@ import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+
+import javax.imageio.IIOImage;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReadParam;
+import javax.imageio.ImageReader;
+import javax.imageio.ImageTypeSpecifier;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.ImageWriter;
+import javax.imageio.plugins.jpeg.JPEGImageWriteParam;
+import javax.imageio.stream.ImageInputStream;
+import javax.imageio.stream.ImageOutputStream;
+
+import org.apache.log4j.Logger;
+import org.jdom2.Document;
+import org.jdom2.Element;
+import org.jdom2.output.Format;
+import org.jdom2.output.XMLOutputter;
 
 /**
  * The <code>MCRImage</code> class describes an image with different zoom levels that can be accessed by its tiles.
@@ -296,16 +306,20 @@ public class MCRImage {
             //End Of BugFix
         }
 
-
         BufferedImage tile = reader.read(0, param);
+        boolean convertToGray = isFakeGrayScale(tile);
         int pixelSize = tile.getColorModel().getPixelSize();
-        if (pixelSize > JPEG_CM_PIXEL_SIZE || tile.getType() == BufferedImage.TYPE_CUSTOM) {
-            // convert to 24 bit
-            String msg = "Converting image to 24 bit color depth: "
-                + (pixelSize > JPEG_CM_PIXEL_SIZE ? "Color depth " + pixelSize : "Image type is 'CUSTOM'");
-            LOGGER.info(msg);
+        if (convertToGray || pixelSize > JPEG_CM_PIXEL_SIZE || tile.getType() == BufferedImage.TYPE_CUSTOM) {
+            if (convertToGray) {
+                LOGGER.info("Image is gray scale but uses color map. Converting to gray scale");
+            } else {
+                // convert to 24 bit
+                String msg = "Converting image to 24 bit color depth: "
+                    + (pixelSize > JPEG_CM_PIXEL_SIZE ? "Color depth " + pixelSize : "Image type is 'CUSTOM'");
+                LOGGER.info(msg);
+            }
             final BufferedImage newTile = new BufferedImage(tile.getWidth(), tile.getHeight(),
-                BufferedImage.TYPE_INT_RGB);
+                convertToGray ? BufferedImage.TYPE_BYTE_GRAY : BufferedImage.TYPE_INT_RGB);
             Graphics2D graphics2d = newTile.createGraphics();
             try {
                 graphics2d.drawImage(tile, 0, 0, tile.getWidth(), tile.getHeight(), null);
@@ -315,6 +329,27 @@ public class MCRImage {
             tile = newTile;
         }
         return tile;
+    }
+
+    /**
+     * @return true, if gray scale image uses color map where every entry uses the same value for each color component
+     */
+    private static boolean isFakeGrayScale(BufferedImage tile) {
+        if (tile.getColorModel() instanceof IndexColorModel) {
+            IndexColorModel icm = (IndexColorModel) tile.getColorModel();
+            int mapSize = icm.getMapSize();
+            byte[] reds = new byte[mapSize], greens = new byte[mapSize], blues = new byte[mapSize];
+            icm.getReds(reds);
+            icm.getGreens(greens);
+            icm.getBlues(blues);
+            for (int i = 0; i < mapSize; i++) {
+                if (reds[i] != greens[i] || greens[i] != blues[i]) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -328,9 +363,7 @@ public class MCRImage {
         final int height = image.getHeight();
         final int newWidth = (int) Math.ceil(width / 2d);
         final int newHeight = (int) Math.ceil(height / 2d);
-        final int type = image.getTransparency() == Transparency.OPAQUE ? BufferedImage.TYPE_INT_RGB : image.getType();
-//        final int type = image.getType();
-        final BufferedImage bicubic = new BufferedImage(newWidth, newHeight, type);
+        final BufferedImage bicubic = new BufferedImage(newWidth, newHeight, image.getType());
         final Graphics2D bg = bicubic.createGraphics();
         bg.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
         bg.scale(ZOOM_FACTOR, ZOOM_FACTOR);
@@ -366,7 +399,8 @@ public class MCRImage {
                         imageType = BufferedImage.TYPE_INT_RGB;
                     } else {
                         LOGGER
-                            .debug("Quite sure we should use TYPE_BYTE_GRAY as there is only one color component present");
+                            .debug(
+                                "Quite sure we should use TYPE_BYTE_GRAY as there is only one color component present");
                         imageType = BufferedImage.TYPE_BYTE_GRAY;
                     }
                 } else if (pixelSize == 1) {
@@ -585,7 +619,8 @@ public class MCRImage {
      * @param z zoom level
      * @throws IOException Exception during ZIP output
      */
-    protected void writeTile(final ZipOutputStream zout, final BufferedImage tile, final int x, final int y, final int z)
+    protected void writeTile(final ZipOutputStream zout, final BufferedImage tile, final int x, final int y,
+        final int z)
         throws IOException {
         if (tile != null) {
             try {
@@ -695,21 +730,6 @@ public class MCRImage {
             imgWriter.setOutput(imageOutputStream);
             //tile = addWatermark(scaleBufferedImage(tile));        
             final IIOImage iioImage = new IIOImage(tile, null, null);
-            imgWriter.write(null, iioImage, imageWriteParam);
-        } finally {
-            imgWriter.reset();
-        }
-    }
-
-    protected void writeImageIo(final OutputStream zout, final BufferedImage image) throws IOException {
-        final ImageWriter imgWriter = imageWriter;
-        if (image.getType() == BufferedImage.TYPE_CUSTOM) {
-            throw new IOException("Do not know how to handle image type 'CUSTOM'");
-        }
-        try (final ImageOutputStream imageOutputStream = ImageIO.createImageOutputStream(zout)) {
-            imgWriter.setOutput(imageOutputStream);
-            //tile = addWatermark(scaleBufferedImage(tile));
-            final IIOImage iioImage = new IIOImage(image, null, null);
             imgWriter.write(null, iioImage, imageWriteParam);
         } finally {
             imgWriter.reset();
