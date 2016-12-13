@@ -25,6 +25,7 @@ import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
+import java.awt.image.ColorModel;
 import java.awt.image.IndexColorModel;
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -52,7 +53,8 @@ import javax.imageio.plugins.jpeg.JPEGImageWriteParam;
 import javax.imageio.stream.ImageInputStream;
 import javax.imageio.stream.ImageOutputStream;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.jdom2.Document;
 import org.jdom2.Element;
 import org.jdom2.output.Format;
@@ -64,16 +66,16 @@ import org.jdom2.output.XMLOutputter;
  * The main purpose of this class is to provide a method to {@link #tile()} a image {@link File} of a MyCoRe derivate.
  * 
  * The resulting file of the tile process is a standard ZIP file with the suffix <code>.iview2</code>. 
- * Use {@link #setTileDir(File)} to specify a common directory where all images of all derivates are tiled. The resulting IView2 file
- * will be stored under this base directory after the following schema (see {@link #getInstance(File, String, String)}):
+ * Use {@link #setTileDir(Path)} to specify a common directory where all images of all derivates are tiled. The resulting IView2 file
+ * will be stored under this base directory after the following schema (see {@link #getInstance(Path, String, String)}):
  * <dl>
  *  <dt>derivateID</dt>
  *  <dd>mycore_derivate_01234567</dd>
  *  <dt>imagePath</dt>
  *  <dd>directory/image.tiff</dd>
  * </dl>
- * results in: <code>tileDir/mycore/derivate/45/67/mycore_derivate_01234567/directory/image.iview2</code><br/>
- * You can use {@link #getTiledFile(File, String, String)} to get access to the IView2 file. 
+ * results in: <code>tileDir/mycore/derivate/45/67/mycore_derivate_01234567/directory/image.iview2</code><br>
+ * You can use {@link #getTiledFile(Path, String, String)} to get access to the IView2 file.
  * 
  * @author Thomas Scheffler (yagee)
  *
@@ -98,11 +100,11 @@ public class MCRImage {
 
     private static final int DIRECTORY_PART_LEN = 2;
 
-    private static JPEGImageWriteParam imageWriteParam;
+    private static final JPEGImageWriteParam imageWriteParam;
 
     private static final double LOG_2 = Math.log(2);
 
-    private static final Logger LOGGER = Logger.getLogger(MCRImage.class);
+    private static final Logger LOGGER = LogManager.getLogger();
 
     private static final int MIN_FILENAME_SUFFIX_LEN = 3;
 
@@ -128,7 +130,7 @@ public class MCRImage {
     /**
      * a counter for generated tiles.
      */
-    protected AtomicInteger imageTilesCount = new AtomicInteger();
+    protected final AtomicInteger imageTilesCount = new AtomicInteger();
 
     /**
      * root dir for generated directories and tiles.
@@ -260,8 +262,7 @@ public class MCRImage {
     public static short getZoomLevels(final int imageWidth, final int imageHeight) {
         int maxDim = Math.max(imageHeight, imageWidth);
         maxDim = Math.max(maxDim, TILE_SIZE);
-        final short maxZoom = (short) Math.ceil(Math.log(maxDim) / LOG_2 - TILE_SIZE_FACTOR);
-        return maxZoom;
+        return (short) Math.ceil(Math.log(maxDim) / LOG_2 - TILE_SIZE_FACTOR);
     }
 
     static ImageReader createImageReader(final Path imageFile) throws IOException {
@@ -279,6 +280,7 @@ public class MCRImage {
 
     /**
      * Reads a rectangular area of the current image.
+     * @param reader image reader with current image at pos 0
      * @param x upper left x-coordinate
      * @param y upper left y-coordinate
      * @param width width of the area of interest
@@ -376,7 +378,7 @@ public class MCRImage {
     /**
      * Returns a {@link BufferedImage#getType()} response, where BufferedImage.TYPE_CUSTOM is translated to compatible image type.
      * @param imageReader with an image on index 0
-     * @throws IOException
+     * @throws IOException while reading image
      */
     public static int getImageType(final ImageReader imageReader) throws IOException {
         Iterator<ImageTypeSpecifier> imageTypes = imageReader.getImageTypes(0);
@@ -389,63 +391,50 @@ public class MCRImage {
                 imageType = imageTypeSpec.getBufferedImageType();
                 break;
             } else {
-                int pixelSize = imageTypeSpec.getColorModel().getPixelSize();
-                if (pixelSize >= 8) {
-                    LOGGER.debug("Quite sure we should use TYPE_INT_RGB for a pixel size of " + pixelSize);
-                    imageType = BufferedImage.TYPE_INT_RGB;
-                } else if (pixelSize == 8) {
-                    if (imageTypeSpec.getColorModel().getNumColorComponents() > 1) {
-                        LOGGER.debug("Quite sure we should use TYPE_INT_RGB for a pixel size of " + pixelSize);
-                        imageType = BufferedImage.TYPE_INT_RGB;
-                    } else {
-                        LOGGER
-                            .debug(
-                                "Quite sure we should use TYPE_BYTE_GRAY as there is only one color component present");
-                        imageType = BufferedImage.TYPE_BYTE_GRAY;
-                    }
-                } else if (pixelSize == 1) {
-                    LOGGER.debug("Quite sure we should use TYPE_BYTE_GRAY as this image is binary.");
-                    imageType = BufferedImage.TYPE_BYTE_GRAY;
-                } else {
-                    LOGGER.warn("Do not know how to handle a pixel size of " + pixelSize);
-                }
+                ColorModel colorModel = imageTypeSpec.getColorModel();
+                imageType = getImageType(colorModel);
             }
+        }
+        return imageType;
+    }
+
+    private static int getImageType(ColorModel colorModel) {
+        int pixelSize = colorModel.getPixelSize();
+        int imageType = BufferedImage.TYPE_INT_RGB; //default value
+        if (pixelSize > 8) {
+            LOGGER.debug("Quite sure we should use TYPE_INT_RGB for a pixel size of " + pixelSize);
+            imageType = BufferedImage.TYPE_INT_RGB;
+        } else if (pixelSize == 8) {
+            if (colorModel.getNumColorComponents() > 1) {
+                LOGGER.debug("Quite sure we should use TYPE_INT_RGB for a pixel size of " + pixelSize);
+                imageType = BufferedImage.TYPE_INT_RGB;
+            } else {
+                LOGGER
+                    .debug(
+                        "Quite sure we should use TYPE_BYTE_GRAY as there is only one color component present");
+                imageType = BufferedImage.TYPE_BYTE_GRAY;
+            }
+        } else if (pixelSize == 1) {
+            LOGGER.debug("Quite sure we should use TYPE_BYTE_GRAY as this image is binary.");
+            imageType = BufferedImage.TYPE_BYTE_GRAY;
+        } else {
+            LOGGER.warn("Do not know how to handle a pixel size of " + pixelSize);
         }
         return imageType;
     }
 
     /**
      * Returns a {@link BufferedImage#getType()} response, where BufferedImage.TYPE_CUSTOM is translated to compatible image type.
-     * @param imageReader with an image on index 0
-     * @throws IOException
+     * @param image image to get the image type from
      */
     public static int getImageType(BufferedImage image) {
-        //default value
-        int imageType = BufferedImage.TYPE_INT_RGB;
+        int imageType;
         if (image.getType() != BufferedImage.TYPE_CUSTOM) {
             //best fit
             LOGGER.debug("Pretty sure we should use " + image.getType());
             imageType = image.getType();
         } else {
-            int pixelSize = image.getColorModel().getPixelSize();
-            if (pixelSize >= 8) {
-                LOGGER.debug("Quite sure we should use TYPE_INT_RGB for a pixel size of " + pixelSize);
-                imageType = BufferedImage.TYPE_INT_RGB;
-            } else if (pixelSize == 8) {
-                if (image.getColorModel().getNumColorComponents() > 1) {
-                    LOGGER.debug("Quite sure we should use TYPE_INT_RGB for a pixel size of " + pixelSize);
-                    imageType = BufferedImage.TYPE_INT_RGB;
-                } else {
-                    LOGGER
-                        .debug("Quite sure we should use TYPE_BYTE_GRAY as there is only one color component present");
-                    imageType = BufferedImage.TYPE_BYTE_GRAY;
-                }
-            } else if (pixelSize == 1) {
-                LOGGER.debug("Quite sure we should use TYPE_BYTE_GRAY as this image is binary.");
-                imageType = BufferedImage.TYPE_BYTE_GRAY;
-            } else {
-                LOGGER.warn("Do not know how to handle a pixel size of " + pixelSize);
-            }
+            imageType = getImageType(image.getColorModel());
         }
         return imageType;
     }
@@ -624,9 +613,8 @@ public class MCRImage {
         throws IOException {
         if (tile != null) {
             try {
-                final StringBuilder tileName = new StringBuilder(Integer.toString(z)).append('/').append(y).append('/')
-                    .append(x).append(".jpg");
-                final ZipEntry ze = new ZipEntry(tileName.toString());
+                String tileName = Integer.toString(z) + '/' + y + '/' + x + ".jpg";
+                final ZipEntry ze = new ZipEntry(tileName);
                 zout.putNextEntry(ze);
                 writeImageIoTile(zout, tile);
                 imageTilesCount.incrementAndGet();
@@ -671,17 +659,18 @@ public class MCRImage {
     /**
      * creates a {@link ZipOutputStream} to write image tiles and metadata to.
      * @return write ready ZIP output stream
-     * @throws IOException 
+     * @throws IOException while creating parent directories of tile file
      * @throws FileNotFoundException if tile directory or image file does not exist and cannot be created
      */
     private ZipOutputStream getZipOutputStream() throws IOException {
         final Path iviewFile = getTiledFile(tileBaseDir, derivate, imagePath);
         LOGGER.info("Saving tiles in " + iviewFile);
-        if (!Files.exists(iviewFile.getParent())) {
-            Files.createDirectories(iviewFile.getParent());
+        Path parentDir = iviewFile.getParent();
+        assert parentDir != null;
+        if (!Files.exists(parentDir)) {
+            Files.createDirectories(parentDir);
         }
-        final ZipOutputStream zout = new ZipOutputStream(new BufferedOutputStream(Files.newOutputStream(iviewFile)));
-        return zout;
+        return new ZipOutputStream(new BufferedOutputStream(Files.newOutputStream(iviewFile)));
     }
 
     /**
@@ -696,8 +685,8 @@ public class MCRImage {
      * Set the image size.
      * Maybe the hole image will be read into RAM for getWidth() and getHeight().
      * 
-     * @param imgReader
-     * @throws IOException
+     * @param imgReader image reader with image position '0' to get the image dimensions
+     * @throws IOException while reading the source image
      */
     private void setImageSize(final ImageReader imgReader) throws IOException {
         setImageHeight(imgReader.getHeight(0));
@@ -743,11 +732,20 @@ public class MCRImage {
         }
         Path imageFile = Paths.get(args[0]);
         //imagePath 
-        String imagePath = imageFile.isAbsolute() ? imageFile.getFileName().toString() : imageFile.toString();
+        String imagePath;
+        if (imageFile.isAbsolute()) {
+            Path fileName = imageFile.getFileName();
+            assert fileName != null;
+            imagePath = fileName.toString();
+        } else {
+            imagePath = imageFile.toString();
+        }
         Path tileDir = imageFile.isAbsolute() ? imageFile.getParent() : Paths.get(".");
+        assert tileDir != null;
         String derivateId = args.length == 2 ? args[1] : null;
         MCRImage image = getInstance(imageFile, derivateId, imagePath);
-        System.out.println("Tile to directory: " + tileDir.toAbsolutePath().toString());
+        Path absolutePath = tileDir.toAbsolutePath();
+        System.out.println("Tile to directory: " + absolutePath);
         image.setTileDir(tileDir);
         MCRTiledPictureProps props = image.tile(null);
         System.out.println("Tiling complete: " + props);

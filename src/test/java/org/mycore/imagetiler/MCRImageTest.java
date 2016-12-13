@@ -46,17 +46,19 @@ import org.mycore.imagetiler.MCRTiledPictureProps;
  *
  */
 public class MCRImageTest {
-    private final HashMap<String, String> pics = new HashMap<String, String>();
+    private final HashMap<String, String> pics = new HashMap<>();
 
     private File tileDir;
 
     private static boolean deleteDirectory(final File path) {
         if (path.exists()) {
             final File[] files = path.listFiles();
+            assert files != null;
             for (final File file : files) {
                 if (file.isDirectory()) {
                     deleteDirectory(file);
                 } else {
+                    //noinspection ResultOfMethodCallIgnored
                     file.delete();
                 }
             }

@@ -22,9 +22,12 @@
 
 package org.mycore.imagetiler;
 
-import org.apache.log4j.Logger;
 
 import javax.imageio.ImageReader;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -40,22 +43,21 @@ import java.util.zip.ZipOutputStream;
  * @author Matthias Eichner
  */
 class MCRMemSaveImage extends MCRImage {
-    private static final Logger LOGGER = Logger.getLogger(MCRMemSaveImage.class);
+    private static final Logger LOGGER = LogManager.getLogger();
 
     private static final short MIN_STEP = 3;
 
     private short zoomLevelPerStep;
 
-    int megaTileSize;
+    private int megaTileSize;
 
     /**
      * for internal use only: uses required properties to instantiate.
      * @param file the image file
      * @param derivateID the derivate ID the image belongs to
      * @param relImagePath the relative path from the derivate root to the image
-     * @throws IOException if {@link ImageReader} could not be instantiated
      */
-    MCRMemSaveImage(final Path file, final String derivateID, final String relImagePath) throws IOException {
+    MCRMemSaveImage(final Path file, final String derivateID, final String relImagePath) {
         super(file, derivateID, relImagePath);
     }
 
@@ -76,11 +78,10 @@ class MCRMemSaveImage extends MCRImage {
         return (short) Math.max(MIN_STEP, (int) Math.ceil(zoomLevels / 2d));
     }
 
-    private static BufferedImage stichTiles(final BufferedImage stitchImage, final BufferedImage tileImage,
+    private static void stichTiles(final BufferedImage stitchImage, final BufferedImage tileImage,
         final int x, final int y) {
         final Graphics graphics = stitchImage.getGraphics();
         graphics.drawImage(tileImage, x, y, null);
-        return stitchImage;
     }
 
     @Override
@@ -88,7 +89,7 @@ class MCRMemSaveImage extends MCRImage {
         final int redWidth = (int) Math.ceil(getImageWidth() / ((double) megaTileSize / TILE_SIZE));
         final int redHeight = (int) Math.ceil(getImageHeight() / ((double) megaTileSize / TILE_SIZE));
         if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("reduced size: " + redWidth + "x" + redHeight);
+            LOGGER.debug(() -> "reduced size: " + redWidth + "x" + redHeight);
         }
         final int stopOnZoomLevel = getZoomLevels(redWidth, redHeight);
         BufferedImage lastPhaseImage = null;
@@ -132,7 +133,7 @@ class MCRMemSaveImage extends MCRImage {
         super.handleSizeChanged();
         final short zoomLevelAtATime = getZoomLevelPerStep(getImageWidth(), getImageHeight());
         setZoomLevelPerStep(zoomLevelAtATime);
-        LOGGER.debug("Using mega tile size of " + megaTileSize + "px for image sized " + getImageWidth() + "x"
+        LOGGER.debug(() -> "Using mega tile size of " + megaTileSize + "px for image sized " + getImageWidth() + "x"
             + getImageHeight());
     }
 

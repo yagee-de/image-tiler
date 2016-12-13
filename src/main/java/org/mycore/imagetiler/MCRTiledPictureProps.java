@@ -61,13 +61,8 @@ public class MCRTiledPictureProps {
 
     static final String PROP_ZOOM_LEVEL = "zoomLevel";
 
-    private static final ThreadLocal<SAXBuilder> DOC_BUILDER = new ThreadLocal<SAXBuilder>() {
-        @Override
-        protected SAXBuilder initialValue() {
-            return new SAXBuilder(XMLReaders.NONVALIDATING);
-        }
-
-    };
+    private static final ThreadLocal<SAXBuilder> DOC_BUILDER = ThreadLocal.withInitial(
+        () -> new SAXBuilder(XMLReaders.NONVALIDATING));
 
     int tilesCount;
 
@@ -100,7 +95,7 @@ public class MCRTiledPictureProps {
      */
     public static MCRTiledPictureProps getInstanceFromFile(Path iviewFile) throws IOException, JDOMException {
         URI uri = URI.create("jar:" + iviewFile.toUri().toString());
-        try (FileSystem zipFileSystem = FileSystems.newFileSystem(uri, Collections.<String, Object> emptyMap(),
+        try (FileSystem zipFileSystem = FileSystems.newFileSystem(uri, Collections.emptyMap(),
             MCRTiledPictureProps.class.getClassLoader())) {
             Path iviewFileRoot = zipFileSystem.getRootDirectories().iterator().next();
             return getInstanceFromDirectory(iviewFileRoot);
