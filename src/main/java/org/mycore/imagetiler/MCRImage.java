@@ -39,6 +39,7 @@ import java.text.MessageFormat;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -309,8 +310,9 @@ public class MCRImage {
         }
 
         BufferedImage tile = reader.read(0, param);
-        boolean convertToGray = isFakeGrayScale(tile);
-        int pixelSize = tile.getColorModel().getPixelSize();
+        ColorModel colorModel = tile.getColorModel();
+        boolean convertToGray = isFakeGrayScale(colorModel);
+        int pixelSize = colorModel.getPixelSize();
         if (convertToGray || pixelSize > JPEG_CM_PIXEL_SIZE || tile.getType() == BufferedImage.TYPE_CUSTOM) {
             if (convertToGray) {
                 LOGGER.info("Image is gray scale but uses color map. Converting to gray scale");
@@ -336,20 +338,17 @@ public class MCRImage {
     /**
      * @return true, if gray scale image uses color map where every entry uses the same value for each color component
      */
-    private static boolean isFakeGrayScale(BufferedImage tile) {
-        if (tile.getColorModel() instanceof IndexColorModel) {
-            IndexColorModel icm = (IndexColorModel) tile.getColorModel();
+    private static boolean isFakeGrayScale(ColorModel colorModel) {
+        if (colorModel instanceof IndexColorModel) {
+            IndexColorModel icm = (IndexColorModel) colorModel;
             int mapSize = icm.getMapSize();
             byte[] reds = new byte[mapSize], greens = new byte[mapSize], blues = new byte[mapSize];
             icm.getReds(reds);
             icm.getGreens(greens);
             icm.getBlues(blues);
-            for (int i = 0; i < mapSize; i++) {
-                if (reds[i] != greens[i] || greens[i] != blues[i]) {
-                    return false;
-                }
-            }
-            return true;
+            boolean isNotGray = IntStream.range(0, mapSize)
+                .anyMatch(i -> reds[i] != greens[i] || greens[i] != blues[i]);
+            return !isNotGray;
         }
         return false;
     }
@@ -400,27 +399,28 @@ public class MCRImage {
 
     private static int getImageType(ColorModel colorModel) {
         int pixelSize = colorModel.getPixelSize();
-        int imageType = BufferedImage.TYPE_INT_RGB; //default value
         if (pixelSize > 8) {
             LOGGER.debug("Quite sure we should use TYPE_INT_RGB for a pixel size of " + pixelSize);
-            imageType = BufferedImage.TYPE_INT_RGB;
+            return BufferedImage.TYPE_INT_RGB;
         } else if (pixelSize == 8) {
+            if (isFakeGrayScale(colorModel)) {
+                LOGGER.debug("Quite sure we should use TYPE_BYTE_GRAY as the color palette has only gray values");
+                return BufferedImage.TYPE_BYTE_GRAY;
+            }
             if (colorModel.getNumColorComponents() > 1) {
                 LOGGER.debug("Quite sure we should use TYPE_INT_RGB for a pixel size of " + pixelSize);
-                imageType = BufferedImage.TYPE_INT_RGB;
-            } else {
-                LOGGER
-                    .debug(
-                        "Quite sure we should use TYPE_BYTE_GRAY as there is only one color component present");
-                imageType = BufferedImage.TYPE_BYTE_GRAY;
+                return BufferedImage.TYPE_INT_RGB;
             }
+            LOGGER.debug("Quite sure we should use TYPE_BYTE_GRAY as there is only one color component present");
+            return BufferedImage.TYPE_BYTE_GRAY;
         } else if (pixelSize == 1) {
             LOGGER.debug("Quite sure we should use TYPE_BYTE_GRAY as this image is binary.");
-            imageType = BufferedImage.TYPE_BYTE_GRAY;
+            return BufferedImage.TYPE_BYTE_GRAY;
         } else {
             LOGGER.warn("Do not know how to handle a pixel size of " + pixelSize);
         }
-        return imageType;
+        //default value
+        return BufferedImage.TYPE_INT_RGB;
     }
 
     /**
