@@ -11,9 +11,9 @@
   <version>1.12-SNAPSHOT</version>
   <name>MyCoRe IView2 Image Tiler Library</name>
   <scm>
-    <connection>scm:svn:http://server.mycore.de/svn/mycore-iview2-addons/image-tiler/trunk</connection>
-    <developerConnection>scm:svn:https://server.mycore.de/svn/mycore-iview2-addons/image-tiler/trunk</developerConnection>
-    <url>http://www.mycore.de/viewvc/viewvc.cgi/mycore-iview2-addons/image-tiler/trunk</url>
+    <connection>scm:git:https://github.com/MyCoRe-Org/image-tiler.git</connection>
+    <developerConnection>scm:git:https://github.com/MyCoRe-Org/image-tiler.git</developerConnection>
+    <url>https://github.com/MyCoRe-Org/image-tiler/tree/master</url>
   </scm>
   <distributionManagement>
     <site>
