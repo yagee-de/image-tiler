@@ -168,7 +168,7 @@ public class MCRImage {
         try {
             ctx = JAXBContext.newInstance(MCRDerivateTiledPictureProps.class);
         } catch (JAXBException e) {
-            throw new RuntimeException(e);
+            throw new ExceptionInInitializerError(e);
         }
     }
 
@@ -241,20 +241,21 @@ public class MCRImage {
             LOGGER.info("No derivate ID given. Using " + tileDir + " as base directory.");
             return tileDir;
         }
+        Path baseDir = tileDir;
         final String[] idParts = derivateID.split("_");
         for (int i = 0; i < idParts.length - 1; i++) {
-            tileDir = tileDir.resolve(idParts[i]);
+            baseDir = baseDir.resolve(idParts[i]);
         }
         final String lastPart = idParts[idParts.length - 1];
         if (lastPart.length() > MIN_FILENAME_SUFFIX_LEN) {
-            tileDir = tileDir.resolve(
+            baseDir = baseDir.resolve(
                 lastPart.substring(lastPart.length() - DIRECTORY_PART_LEN * 2, lastPart.length() - DIRECTORY_PART_LEN));
-            tileDir = tileDir.resolve(lastPart.substring(lastPart.length() - DIRECTORY_PART_LEN, lastPart.length()));
+            baseDir = baseDir.resolve(lastPart.substring(lastPart.length() - DIRECTORY_PART_LEN, lastPart.length()));
         } else {
-            tileDir = tileDir.resolve(lastPart);
+            baseDir = baseDir.resolve(lastPart);
         }
-        tileDir = tileDir.resolve(derivateID);
-        return tileDir;
+        baseDir = baseDir.resolve(derivateID);
+        return baseDir;
     }
 
     /**
@@ -346,7 +347,9 @@ public class MCRImage {
         if (colorModel instanceof IndexColorModel) {
             IndexColorModel icm = (IndexColorModel) colorModel;
             int mapSize = icm.getMapSize();
-            byte[] reds = new byte[mapSize], greens = new byte[mapSize], blues = new byte[mapSize];
+            byte[] reds = new byte[mapSize];
+            byte[] greens = new byte[mapSize];
+            byte[] blues = new byte[mapSize];
             icm.getReds(reds);
             icm.getGreens(greens);
             icm.getBlues(blues);
@@ -754,6 +757,13 @@ public class MCRImage {
     @XmlRootElement(name = "imageinfo")
     @XmlAccessorType(XmlAccessType.FIELD)
     private static class MCRDerivateTiledPictureProps extends MCRTiledPictureProps {
+
+        @XmlAttribute
+        private String derivate;
+
+        @XmlAttribute
+        private String path;
+
         public MCRDerivateTiledPictureProps() {
             super();
         }
@@ -768,12 +778,6 @@ public class MCRImage {
             super.width = width;
             super.zoomlevel = zoomLevel;
         }
-
-        @XmlAttribute
-        private String derivate;
-
-        @XmlAttribute
-        private String path;
 
     }
 }

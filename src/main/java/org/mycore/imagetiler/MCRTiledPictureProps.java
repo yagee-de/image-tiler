@@ -54,7 +54,7 @@ public class MCRTiledPictureProps {
         try {
             jaxbContext = JAXBContext.newInstance(MCRTiledPictureProps.class);
         } catch (JAXBException e) {
-            throw new RuntimeException(e);
+            throw new ExceptionInInitializerError(e);
         }
     }
 
@@ -64,16 +64,16 @@ public class MCRTiledPictureProps {
     public static final String IMAGEINFO_XML = "imageinfo.xml";
 
     @XmlAttribute(name = "tiles")
-    int tilesCount;
+    protected int tilesCount;
 
     @XmlAttribute
-    int height;
+    protected int height;
 
     @XmlAttribute
-    int width;
+    protected int width;
 
     @XmlAttribute
-    int zoomlevel;
+    protected int zoomlevel;
 
     /**
      * gets properties of the given <code>.iview2</code> file.
