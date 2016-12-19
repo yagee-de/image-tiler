@@ -47,8 +47,6 @@ class MCRMemSaveImage extends MCRImage {
 
     private static final short MIN_STEP = 3;
 
-    private short zoomLevelPerStep;
-
     private int megaTileSize;
 
     /**
@@ -138,8 +136,7 @@ class MCRMemSaveImage extends MCRImage {
     }
 
     private void setZoomLevelPerStep(final short zoomLevel) {
-        zoomLevelPerStep = zoomLevel;
-        megaTileSize = MCRImage.TILE_SIZE * (int) Math.pow(2, zoomLevelPerStep); //4096x4096 if 4
+        megaTileSize = MCRImage.TILE_SIZE * (int) Math.pow(2, zoomLevel); //4096x4096 if 4
     }
 
     private BufferedImage writeTiles(final ZipOutputStream zout, final BufferedImage megaTile, final int x,

@@ -53,13 +53,16 @@ import javax.imageio.ImageWriter;
 import javax.imageio.plugins.jpeg.JPEGImageWriteParam;
 import javax.imageio.stream.ImageInputStream;
 import javax.imageio.stream.ImageOutputStream;
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
+import javax.xml.bind.annotation.XmlAttribute;
+import javax.xml.bind.annotation.XmlRootElement;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.jdom2.Document;
-import org.jdom2.Element;
-import org.jdom2.output.Format;
-import org.jdom2.output.XMLOutputter;
+
 
 /**
  * The <code>MCRImage</code> class describes an image with different zoom levels that can be accessed by its tiles.
@@ -83,11 +86,13 @@ import org.jdom2.output.XMLOutputter;
  */
 public class MCRImage {
 
+    private static final JAXBContext ctx;
+
     /**
      * this is the JPEG compression rate.
      * @see JPEGImageWriteParam#setCompressionQuality(float)
      */
-    protected static final float JPEG_COMPRESSION_RATE = 0.75f;
+    private static final float JPEG_COMPRESSION_RATE = 0.75f;
 
     /**
      * width and height of tiles in pixel.
@@ -97,7 +102,7 @@ public class MCRImage {
     /**
      * Pixel size of a color JPEG image.
      */
-    protected static final int JPEG_CM_PIXEL_SIZE = 24;
+    private static final int JPEG_CM_PIXEL_SIZE = 24;
 
     private static final int DIRECTORY_PART_LEN = 2;
 
@@ -116,32 +121,32 @@ public class MCRImage {
     /**
      * derivate ID (for output directory calculation).
      */
-    protected String derivate;
+    private String derivate;
 
     /**
      * the whole image that gets tiled as a <code>Path</code>.
      */
-    protected Path imageFile;
+    private Path imageFile;
 
     /**
      * path to image relative to derivate root. (for output directory calculation)
      */
-    protected String imagePath;
+    private String imagePath;
 
     /**
      * a counter for generated tiles.
      */
-    protected final AtomicInteger imageTilesCount = new AtomicInteger();
+    private final AtomicInteger imageTilesCount = new AtomicInteger();
 
     /**
      * root dir for generated directories and tiles.
      */
-    protected Path tileBaseDir;
+    private Path tileBaseDir;
 
     /**
      * currently unused: a image used to watermark every tile.
      */
-    protected BufferedImage waterMarkImage;
+    private BufferedImage waterMarkImage;
 
     private int imageHeight;
 
@@ -160,6 +165,11 @@ public class MCRImage {
         }
         imageWriteParam.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
         imageWriteParam.setCompressionQuality(JPEG_COMPRESSION_RATE);
+        try {
+            ctx = JAXBContext.newInstance(MCRDerivateTiledPictureProps.class);
+        } catch (JAXBException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**
@@ -181,10 +191,8 @@ public class MCRImage {
      * @param derivateID the derivate ID the image belongs to
      * @param imagePath the relative path from the derivate root to the image
      * @return new instance of MCRImage representing <code>file</code>
-     * @throws IOException if access to image file is not possible
      */
-    public static MCRImage getInstance(final Path file, final String derivateID, final String imagePath)
-        throws IOException {
+    public static MCRImage getInstance(final Path file, final String derivateID, final String imagePath) {
         return new MCRMemSaveImage(file, derivateID, imagePath);
     }
 
@@ -217,25 +225,7 @@ public class MCRImage {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("tileDir: " + tileDir + ", derivate: " + derivateID + ", imagePath: " + imagePath);
         }
-        Path tileFile = tileDir;
-        if (derivateID != null) {
-            final String[] idParts = derivateID.split("_");
-            for (int i = 0; i < idParts.length - 1; i++) {
-                tileFile = tileFile.resolve(idParts[i]);
-            }
-            final String lastPart = idParts[idParts.length - 1];
-            if (lastPart.length() > MIN_FILENAME_SUFFIX_LEN) {
-                tileFile = tileFile.resolve(lastPart.substring(lastPart.length() - DIRECTORY_PART_LEN * 2,
-                    lastPart.length() - DIRECTORY_PART_LEN));
-                tileFile = tileFile.resolve(lastPart.substring(lastPart.length() - DIRECTORY_PART_LEN,
-                    lastPart.length()));
-            } else {
-                tileFile = tileFile.resolve(lastPart);
-            }
-            tileFile = tileFile.resolve(derivateID);
-        } else {
-            LOGGER.info("No derivate ID given. Using " + tileDir + " as base directory.");
-        }
+        Path tileFile = getTiledFileBaseDir(tileDir, derivateID);
         if (imagePath == null) {
             return tileFile;
         }
@@ -244,6 +234,27 @@ public class MCRImage {
             pos > 0 ? pos : imagePath.length())
             + ".iview2";
         return tileFile.resolve(relPath);
+    }
+
+    private static Path getTiledFileBaseDir(Path tileDir, String derivateID) {
+        if (derivateID == null) {
+            LOGGER.info("No derivate ID given. Using " + tileDir + " as base directory.");
+            return tileDir;
+        }
+        final String[] idParts = derivateID.split("_");
+        for (int i = 0; i < idParts.length - 1; i++) {
+            tileDir = tileDir.resolve(idParts[i]);
+        }
+        final String lastPart = idParts[idParts.length - 1];
+        if (lastPart.length() > MIN_FILENAME_SUFFIX_LEN) {
+            tileDir = tileDir.resolve(
+                lastPart.substring(lastPart.length() - DIRECTORY_PART_LEN * 2, lastPart.length() - DIRECTORY_PART_LEN));
+            tileDir = tileDir.resolve(lastPart.substring(lastPart.length() - DIRECTORY_PART_LEN, lastPart.length()));
+        } else {
+            tileDir = tileDir.resolve(lastPart);
+        }
+        tileDir = tileDir.resolve(derivateID);
+        return tileDir;
     }
 
     /**
@@ -266,7 +277,7 @@ public class MCRImage {
         return (short) Math.ceil(Math.log(maxDim) / LOG_2 - TILE_SIZE_FACTOR);
     }
 
-    static ImageReader createImageReader(final Path imageFile) throws IOException {
+    private static ImageReader createImageReader(final Path imageFile) throws IOException {
         final ImageInputStream imageInputStream = ImageIO.createImageInputStream(Files.newByteChannel(imageFile,
             StandardOpenOption.READ));
         final Iterator<ImageReader> readers = ImageIO.getImageReaders(imageInputStream);
@@ -294,45 +305,38 @@ public class MCRImage {
         final ImageReadParam param = reader.getDefaultReadParam();
         final Rectangle srcRegion = new Rectangle(x, y, width, height);
         param.setSourceRegion(srcRegion);
-
-        //BugFix for bug reported at: http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4705399
-        ImageTypeSpecifier typeToUse = null;
-        for (final Iterator<ImageTypeSpecifier> i = reader.getImageTypes(0); i.hasNext();) {
-            final ImageTypeSpecifier type = i.next();
-            if (type.getColorModel().getColorSpace().isCS_sRGB()) {
-                typeToUse = type;
-                break;
-            }
-        }
-        if (typeToUse != null) {
-            param.setDestinationType(typeToUse);
-            //End Of BugFix
-        }
-
         BufferedImage tile = reader.read(0, param);
+        return convertIfNeeded(tile);
+    }
+
+    private static BufferedImage convertIfNeeded(BufferedImage tile) {
         ColorModel colorModel = tile.getColorModel();
         boolean convertToGray = isFakeGrayScale(colorModel);
         int pixelSize = colorModel.getPixelSize();
-        if (convertToGray || pixelSize > JPEG_CM_PIXEL_SIZE || tile.getType() == BufferedImage.TYPE_CUSTOM) {
-            if (convertToGray) {
-                LOGGER.info("Image is gray scale but uses color map. Converting to gray scale");
-            } else {
-                // convert to 24 bit
-                String msg = "Converting image to 24 bit color depth: "
-                    + (pixelSize > JPEG_CM_PIXEL_SIZE ? "Color depth " + pixelSize : "Image type is 'CUSTOM'");
-                LOGGER.info(msg);
-            }
-            final BufferedImage newTile = new BufferedImage(tile.getWidth(), tile.getHeight(),
-                convertToGray ? BufferedImage.TYPE_BYTE_GRAY : BufferedImage.TYPE_INT_RGB);
-            Graphics2D graphics2d = newTile.createGraphics();
-            try {
-                graphics2d.drawImage(tile, 0, 0, tile.getWidth(), tile.getHeight(), null);
-            } finally {
-                graphics2d.dispose();
-            }
-            tile = newTile;
+        int targetType = tile.getType();
+        if (convertToGray) {
+            LOGGER.info("Image is gray scale but uses color map. Converting to gray scale");
+            targetType = BufferedImage.TYPE_BYTE_GRAY;
+        } else if (pixelSize > JPEG_CM_PIXEL_SIZE) {
+            LOGGER.info("Converting image to 24 bit color depth: Color depth " + pixelSize);
+            targetType = BufferedImage.TYPE_INT_RGB;
+        } else if (tile.getType() == BufferedImage.TYPE_CUSTOM) {
+            LOGGER.info("Converting image to 24 bit color depth: Image type is 'CUSTOM'");
+            targetType = BufferedImage.TYPE_INT_RGB;
         }
-        return tile;
+        if (targetType == tile.getType()) {
+            //no need for conversion
+            return tile;
+        }
+        final BufferedImage newTile = new BufferedImage(tile.getWidth(), tile.getHeight(),
+            convertToGray ? BufferedImage.TYPE_BYTE_GRAY : BufferedImage.TYPE_INT_RGB);
+        Graphics2D graphics2d = newTile.createGraphics();
+        try {
+            graphics2d.drawImage(tile, 0, 0, tile.getWidth(), tile.getHeight(), null);
+        } finally {
+            graphics2d.dispose();
+        }
+        return newTile;
     }
 
     /**
@@ -549,7 +553,7 @@ public class MCRImage {
     /**
      * @return {@link MCRTiledPictureProps} instance for the current image
      */
-    protected MCRTiledPictureProps getImageProperties() {
+    private MCRTiledPictureProps getImageProperties() {
         final MCRTiledPictureProps picProps = new MCRTiledPictureProps();
         picProps.width = getImageWidth();
         picProps.height = getImageHeight();
@@ -578,22 +582,17 @@ public class MCRImage {
      * @param zout ZipOutputStream of <code>.iview2</code> file
      * @throws IOException Exception during ZIP output
      */
-    protected void writeMetaData(final ZipOutputStream zout) throws IOException {
+    private void writeMetaData(final ZipOutputStream zout) throws IOException {
         final ZipEntry ze = new ZipEntry(MCRTiledPictureProps.IMAGEINFO_XML);
         zout.putNextEntry(ze);
         try {
-            final Element rootElement = new Element("imageinfo");
-            final Document imageInfo = new Document(rootElement);
-            if (derivate != null) {
-                rootElement.setAttribute(MCRTiledPictureProps.PROP_DERIVATE, derivate);
+            MCRDerivateTiledPictureProps imageProps = new MCRDerivateTiledPictureProps(derivate, imagePath,
+                imageTilesCount.get(), getImageZoomLevels(), getImageHeight(), getImageWidth());
+            try {
+                ctx.createMarshaller().marshal(imageProps, zout);
+            } catch (JAXBException e) {
+                throw new IOException(e);
             }
-            rootElement.setAttribute(MCRTiledPictureProps.PROP_PATH, imagePath);
-            rootElement.setAttribute(MCRTiledPictureProps.PROP_TILES, imageTilesCount.toString());
-            rootElement.setAttribute(MCRTiledPictureProps.PROP_WIDTH, Integer.toString(getImageWidth()));
-            rootElement.setAttribute(MCRTiledPictureProps.PROP_HEIGHT, Integer.toString(getImageHeight()));
-            rootElement.setAttribute(MCRTiledPictureProps.PROP_ZOOM_LEVEL, Integer.toString(getImageZoomLevels()));
-            final XMLOutputter xout = new XMLOutputter(Format.getCompactFormat());
-            xout.output(imageInfo, zout);
         } finally {
             zout.closeEntry();
         }
@@ -749,5 +748,32 @@ public class MCRImage {
         image.setTileDir(tileDir);
         MCRTiledPictureProps props = image.tile(null);
         System.out.println("Tiling complete: " + props);
+    }
+
+    @SuppressWarnings("unused")
+    @XmlRootElement(name = "imageinfo")
+    @XmlAccessorType(XmlAccessType.FIELD)
+    private static class MCRDerivateTiledPictureProps extends MCRTiledPictureProps {
+        public MCRDerivateTiledPictureProps() {
+            super();
+        }
+
+        public MCRDerivateTiledPictureProps(String derivate, String path, int tilesCount, int zoomLevel, int height,
+            int width) {
+            super();
+            this.derivate = derivate;
+            this.path = path;
+            super.tilesCount = tilesCount;
+            super.height = height;
+            super.width = width;
+            super.zoomlevel = zoomLevel;
+        }
+
+        @XmlAttribute
+        private String derivate;
+
+        @XmlAttribute
+        private String path;
+
     }
 }

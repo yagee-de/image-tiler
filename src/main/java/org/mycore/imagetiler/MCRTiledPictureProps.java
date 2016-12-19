@@ -31,56 +31,58 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
 
-import org.jdom2.Document;
-import org.jdom2.Element;
-import org.jdom2.JDOMException;
-import org.jdom2.input.SAXBuilder;
-import org.jdom2.input.sax.XMLReaders;
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
+import javax.xml.bind.annotation.XmlAttribute;
+import javax.xml.bind.annotation.XmlRootElement;
+import javax.xml.transform.stream.StreamSource;
 
 /**
  * The <code>MCRTiledPictureProps</code> gives access to a bunch of properties referring to a {@link MCRImage} instance.
  * @author Thomas Scheffler (yagee)
  *
  */
+@XmlRootElement(name = "imageinfo")
+@XmlAccessorType(XmlAccessType.FIELD)
 public class MCRTiledPictureProps {
+
+    private static JAXBContext jaxbContext;
+
+    static {
+        try {
+            jaxbContext = JAXBContext.newInstance(MCRTiledPictureProps.class);
+        } catch (JAXBException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     /**
      * file name of property file inside .iview2 file
      */
     public static final String IMAGEINFO_XML = "imageinfo.xml";
 
-    static final String PROP_DERIVATE = "derivate";
-
-    static final String PROP_HEIGHT = "height";
-
-    static final String PROP_PATH = "path";
-
-    static final String PROP_TILES = "tiles";
-
-    static final String PROP_WIDTH = "width";
-
-    static final String PROP_ZOOM_LEVEL = "zoomLevel";
-
-    private static final ThreadLocal<SAXBuilder> DOC_BUILDER = ThreadLocal.withInitial(
-        () -> new SAXBuilder(XMLReaders.NONVALIDATING));
-
+    @XmlAttribute(name = "tiles")
     int tilesCount;
 
+    @XmlAttribute
     int height;
 
+    @XmlAttribute
     int width;
 
+    @XmlAttribute
     int zoomlevel;
 
     /**
      * gets properties of the given <code>.iview2</code> file.
      * Use {@link MCRImage#getTiledFile(Path, String, String)} to get the {@link Path} instance of the <code>.iview2</code> file.
      * @param iviewFile the IView2 file
-     * @return instance of the class referring <code>iviewFile</code> 
+     * @return instance of the class referring <code>iviewFile</code>
      * @throws IOException Exceptions occurs while accessing <code>iviewFile</code>.
-     * @throws JDOMException Exceptions while parsing metadata (file: <code>imageinfo.xml</code>)
      */
-    public static MCRTiledPictureProps getInstance(final File iviewFile) throws IOException, JDOMException {
+    public static MCRTiledPictureProps getInstance(final File iviewFile) throws IOException {
         return iviewFile.isDirectory() ? getInstanceFromDirectory(iviewFile.toPath()) : getInstanceFromFile(iviewFile
             .toPath());
     }
@@ -89,11 +91,10 @@ public class MCRTiledPictureProps {
      * gets properties of the given <code>.iview2</code> file.
      * Use {@link MCRImage#getTiledFile(Path, String, String)} to get the {@link Path} instance of the <code>.iview2</code> file.
      * @param iviewFile the IView2 file
-     * @return instance of the class referring <code>iviewFile</code> 
+     * @return instance of the class referring <code>iviewFile</code>
      * @throws IOException Exceptions occurs while accessing <code>iviewFile</code>.
-     * @throws JDOMException Exceptions while parsing metadata (file: <code>imageinfo.xml</code>)
      */
-    public static MCRTiledPictureProps getInstanceFromFile(Path iviewFile) throws IOException, JDOMException {
+    public static MCRTiledPictureProps getInstanceFromFile(Path iviewFile) throws IOException {
         URI uri = URI.create("jar:" + iviewFile.toUri().toString());
         try (FileSystem zipFileSystem = FileSystems.newFileSystem(uri, Collections.emptyMap(),
             MCRTiledPictureProps.class.getClassLoader())) {
@@ -106,22 +107,23 @@ public class MCRTiledPictureProps {
      * gets properties of the given <code>.iview2</code> file.
      * Use {@link MCRImage#getTiledFile(Path, String, String)} to get the {@link Path} instance of the <code>.iview2</code> file.
      * @param iviewFileRoot the root of the iviewFile
-     * @return instance of the class referring <code>iviewFile</code> 
+     * @return instance of the class referring <code>iviewFile</code>
      * @throws IOException Exceptions occurs while accessing <code>iviewFile</code>.
-     * @throws JDOMException Exceptions while parsing metadata (file: <code>imageinfo.xml</code>)
      */
-    public static MCRTiledPictureProps getInstanceFromDirectory(Path iviewFileRoot) throws IOException, JDOMException {
+    public static MCRTiledPictureProps getInstanceFromDirectory(Path iviewFileRoot) throws IOException {
         Path imageInfoPath = iviewFileRoot.resolve(IMAGEINFO_XML);
         try (final InputStream zin = Files.newInputStream(imageInfoPath)) {
-            final Document imageInfo = DOC_BUILDER.get().build(zin);
-            final Element root = imageInfo.getRootElement();
-            final MCRTiledPictureProps props = new MCRTiledPictureProps();
-            props.tilesCount = Integer.parseInt(root.getAttributeValue(PROP_TILES));
-            props.height = Integer.parseInt(root.getAttributeValue(PROP_HEIGHT));
-            props.width = Integer.parseInt(root.getAttributeValue(PROP_WIDTH));
-            props.zoomlevel = Integer.parseInt(root.getAttributeValue(PROP_ZOOM_LEVEL));
-            return props;
+            try {
+                StreamSource is = new StreamSource(zin);
+                return jaxbContext.createUnmarshaller().unmarshal(is, MCRTiledPictureProps.class).getValue();
+            } catch (JAXBException e) {
+                throw new IOException(e);
+            }
         }
+    }
+
+    public static JAXBContext getJaxbContext() {
+        return jaxbContext;
     }
 
     /**
