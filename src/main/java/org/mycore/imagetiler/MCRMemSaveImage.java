@@ -1,38 +1,33 @@
 /*
- * $Revision: 5697 $ $Date: 04.12.2009 $
- *
  * This file is part of ***  M y C o R e  ***
  * See http://www.mycore.de/ for details.
  *
- * This program is free software; you can use it, redistribute it
- * and / or modify it under the terms of the GNU General Public License
- * (GPL) as published by the Free Software Foundation; either version 2
- * of the License or (at your option) any later version.
+ * MyCoRe is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MyCoRe is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program, in a file called gpl.txt or license.txt.
- * If not, write to the Free Software Foundation Inc.,
- * 59 Temple Place - Suite 330, Boston, MA  02111-1307 USA
+ * along with MyCoRe.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.mycore.imagetiler;
 
+import java.awt.Graphics;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.zip.ZipOutputStream;
 
 import javax.imageio.ImageReader;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-import java.awt.*;
-import java.awt.image.BufferedImage;
-import java.io.IOException;
-import java.nio.file.Path;
-import java.util.zip.ZipOutputStream;
 
 /**
  * Uses a special fast and memory saving algorithm to tile images.
@@ -90,8 +85,11 @@ class MCRMemSaveImage extends MCRImage {
             LOGGER.debug(() -> "reduced size: " + redWidth + "x" + redHeight);
         }
         final int stopOnZoomLevel = getZoomLevels(redWidth, redHeight);
-        BufferedImage lastPhaseImage = null;
         final boolean lastPhaseNeeded = Math.max(redWidth, redHeight) > TILE_SIZE;
+        //prepare empty image for the last phase of tiling process
+        BufferedImage lastPhaseImage = lastPhaseNeeded
+            ? new BufferedImage(redWidth, redHeight, getBufferedImageType(imageReader))
+            : null;
 
         final int xcount = (int) Math.ceil((float) getImageWidth() / (float) megaTileSize);
         final int ycount = (int) Math.ceil((float) getImageHeight() / (float) megaTileSize);
@@ -100,7 +98,7 @@ class MCRMemSaveImage extends MCRImage {
 
         for (int x = 0; x < xcount; x++) {
             for (int y = 0; y < ycount; y++) {
-                LOGGER.debug("create new mega tile (" + x + "," + y + ")");
+                LOGGER.debug("create new mega tile ({},{})", x, y);
                 final int xpos = x * megaTileSize;
                 final int width = Math.min(megaTileSize, getImageWidth() - xpos);
                 final int ypos = y * megaTileSize;
@@ -111,10 +109,6 @@ class MCRMemSaveImage extends MCRImage {
                 final BufferedImage tile = writeTiles(zout, megaTile, x, y, imageZoomLevels, zoomFactor,
                     stopOnZoomLevel);
                 if (lastPhaseNeeded) {
-                    //prepare empty image for the last phase of tiling process
-                    if (lastPhaseImage == null) {
-                        lastPhaseImage = new BufferedImage(redWidth, redHeight, tile.getType());
-                    }
                     stichTiles(lastPhaseImage, tile, x * TILE_SIZE, y * TILE_SIZE);
                 }
             }

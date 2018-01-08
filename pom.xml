@@ -1,87 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
-  <description>Image Tiling Library</description>
-  <parent>
-    <artifactId>mycore-parent</artifactId>
-    <groupId>org.mycore</groupId>
-    <version>31-SNAPSHOT</version>
-  </parent>
   <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>org.mycore</groupId>
+    <artifactId>mycore-parent</artifactId>
+    <version>33-SNAPSHOT</version>
+  </parent>
   <groupId>org.mycore.iview2</groupId>
   <artifactId>image-tiler</artifactId>
   <version>1.12-SNAPSHOT</version>
   <name>MyCoRe IView2 Image Tiler Library</name>
+  <description>Image Tiling Library</description>
   <scm>
     <connection>scm:git:https://github.com/MyCoRe-Org/image-tiler.git</connection>
     <developerConnection>scm:git:https://github.com/MyCoRe-Org/image-tiler.git</developerConnection>
     <url>https://github.com/MyCoRe-Org/image-tiler/tree/master</url>
   </scm>
-  <distributionManagement>
-    <site>
-      <id>MyCoRe HQ</id>
-      <name>MyCoRe HQ-sites</name>
-      <url>scp://server.mycore.de/mcr/mycore.de/generated/${project.artifactId}-${project.version}</url>
-    </site>
-  </distributionManagement>
   <properties>
     <java.target.version>1.8</java.target.version>
   </properties>
-  <repositories>
-    <repository>
-      <id>central</id>
-      <name>Central Repository</name>
-      <url>https://repo.maven.apache.org/maven2</url>
-      <snapshots>
-        <enabled>false</enabled>
-      </snapshots>
-    </repository>
-    <repository>
-      <id>MyCoRe HQ</id>
-      <url>http://artifactory.mycore.de/mycore-releases</url>
-      <snapshots>
-        <enabled>false</enabled>
-      </snapshots>
-    </repository>
-    <repository>
-      <id>MyCoRe HQ Snapshots</id>
-      <url>http://artifactory.mycore.de/mycore-snapshots</url>
-      <releases>
-        <enabled>false</enabled>
-      </releases>
-      <snapshots>
-        <enabled>true</enabled>
-      </snapshots>
-    </repository>
-  </repositories>
-  <pluginRepositories>
-    <pluginRepository>
-      <id>central</id>
-      <name>Central Repository</name>
-      <url>https://repo.maven.apache.org/maven2</url>
-      <releases>
-        <updatePolicy>never</updatePolicy>
-      </releases>
-      <snapshots>
-        <enabled>false</enabled>
-      </snapshots>
-    </pluginRepository>
-    <pluginRepository>
-      <id>MyCoRe HQ</id>
-      <url>http://artifactory.mycore.de/mycore-releases</url>
-      <snapshots>
-        <enabled>false</enabled>
-      </snapshots>
-    </pluginRepository>
-    <pluginRepository>
-      <id>MyCoRe HQ Snapshots</id>
-      <url>http://artifactory.mycore.de/mycore-snapshots</url>
-      <releases>
-        <enabled>false</enabled>
-      </releases>
-      <snapshots>
-        <enabled>true</enabled>
-      </snapshots>
-    </pluginRepository>
-  </pluginRepositories>
   <build>
     <plugins>
       <plugin>
@@ -101,11 +38,11 @@
         <artifactId>maven-pmd-plugin</artifactId>
         <executions>
           <execution>
-            <phase>verify</phase>
             <goals>
               <goal>check</goal>
               <goal>cpd-check</goal>
             </goals>
+            <phase>verify</phase>
           </execution>
         </executions>
       </plugin>
@@ -114,31 +51,57 @@
         <artifactId>findbugs-maven-plugin</artifactId>
         <executions>
           <execution>
-            <phase>verify</phase>
             <goals>
               <goal>check</goal>
             </goals>
+            <phase>verify</phase>
           </execution>
         </executions>
       </plugin>
     </plugins>
   </build>
+  <repositories>
+    <repository>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+    </repository>
+  </repositories>
+  <pluginRepositories>
+    <pluginRepository>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+    </pluginRepository>
+  </pluginRepositories>
+  <distributionManagement>
+    <site>
+      <id>MyCoRe HQ</id>
+      <name>MyCoRe HQ-sites</name>
+      <url>scp://server.mycore.de/mcr/mycore.de/generated/${project.artifactId}-${project.version}</url>
+    </site>
+  </distributionManagement>
   <dependencies>
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-api</artifactId>
+      <version>2.8.2</version>
+    </dependency>
     <dependency>
       <groupId>com.github.jai-imageio</groupId>
       <artifactId>jai-imageio-core</artifactId>
       <version>1.3.1</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.logging.log4j</groupId>
-      <artifactId>log4j-api</artifactId>
-      <version>2.7</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.logging.log4j</groupId>
-      <artifactId>log4j-core</artifactId>
-      <scope>test</scope>
-      <version>2.7</version>
+      <scope>runtime</scope>
     </dependency>
     <dependency>
       <groupId>commons-io</groupId>
@@ -152,41 +115,47 @@
       <version>4.11</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-core</artifactId>
+      <version>2.8.2</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
   <developers>
     <developer>
       <id>mcrtchef</id>
       <name>Thomas Scheffler</name>
-      <organization>Friedrich-Schiller-Universität Jena, Thüringer Universitäts- und Landesbibliothek</organization>
       <email>thomas.scheffler (at) uni-jena.de</email>
+      <organization>Friedrich-Schiller-Universität Jena, Thüringer Universitäts- und Landesbibliothek</organization>
       <organizationUrl>http://www.thulb.uni-jena.de/</organizationUrl>
-      <timezone>+1</timezone>
       <roles>
         <role>architect</role>
         <role>developer</role>
       </roles>
+      <timezone>+1</timezone>
     </developer>
     <developer>
       <id>mcrmeich</id>
       <name>Matthias Eichner</name>
-      <organization>Friedrich-Schiller-Universität Jena, Thüringer Universitäts- und Landesbibliothek</organization>
       <email>matthias.eichner (at) uni-jena.de</email>
+      <organization>Friedrich-Schiller-Universität Jena, Thüringer Universitäts- und Landesbibliothek</organization>
       <organizationUrl>http://www.thulb.uni-jena.de/</organizationUrl>
-      <timezone>+1</timezone>
       <roles>
         <role>developer</role>
       </roles>
+      <timezone>+1</timezone>
     </developer>
     <developer>
       <id>mcrvuchi</id>
       <name>Hu Chi Vu</name>
-      <organization>Friedrich-Schiller-Universität Jena, Thüringer Universitäts- und Landesbibliothek</organization>
       <email>chi (at) thulb.uni-jena.de</email>
+      <organization>Friedrich-Schiller-Universität Jena, Thüringer Universitäts- und Landesbibliothek</organization>
       <organizationUrl>http://www.thulb.uni-jena.de/</organizationUrl>
-      <timezone>+1</timezone>
       <roles>
         <role>developer</role>
       </roles>
+      <timezone>+1</timezone>
     </developer>
   </developers>
 </project>
