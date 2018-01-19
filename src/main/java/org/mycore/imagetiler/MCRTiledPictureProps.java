@@ -69,7 +69,7 @@ public class MCRTiledPictureProps {
     protected int width;
 
     @XmlAttribute
-    protected int zoomlevel;
+    protected int zoomLevel;
 
     /**
      * gets properties of the given <code>.iview2</code> file.
@@ -147,12 +147,12 @@ public class MCRTiledPictureProps {
      * @return the zoomlevel
      */
     public int getZoomlevel() {
-        return zoomlevel;
+        return zoomLevel;
     }
 
     @Override
     public String toString() {
         return "MCRTiledPictureProps [tilesCount=" + tilesCount + ", height=" + height + ", width=" + width
-            + ", zoomlevel=" + zoomlevel + "]";
+            + ", zoomLevel=" + zoomLevel + "]";
     }
 }

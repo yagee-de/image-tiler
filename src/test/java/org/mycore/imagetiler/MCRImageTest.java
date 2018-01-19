@@ -17,24 +17,27 @@
  */
 package org.mycore.imagetiler;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
+import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.apache.commons.io.FilenameUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.mycore.imagetiler.MCRImage;
-import org.mycore.imagetiler.MCRMemSaveImage;
-import org.mycore.imagetiler.MCRTiledPictureProps;
+import org.w3c.dom.Document;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Provides a good test case for {@link MCRImage}.
@@ -120,6 +123,19 @@ public class MCRImageTest {
             final int tilesCount;
             try (final ZipFile iviewImage = new ZipFile(iviewFile.toFile())) {
                 tilesCount = iviewImage.size() - 1;
+                ZipEntry imageInfoXML = iviewImage.getEntry(MCRTiledPictureProps.IMAGEINFO_XML);
+                DocumentBuilder documentBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+                Document imageInfo = documentBuilder.parse(iviewImage.getInputStream(imageInfoXML));
+                String hAttr = Objects.requireNonNull(imageInfo.getDocumentElement().getAttribute("height"));
+                String wAttr = Objects.requireNonNull(imageInfo.getDocumentElement().getAttribute("width"));
+                String zAttr = Objects.requireNonNull(imageInfo.getDocumentElement().getAttribute("zoomLevel"));
+                String tAttr = Objects.requireNonNull(imageInfo.getDocumentElement().getAttribute("tiles"));
+                assertTrue("height must be positive: " + hAttr, Integer.parseInt(hAttr) > 0);
+                assertTrue("width must be positive: " + wAttr, Integer.parseInt(wAttr) > 0);
+                assertTrue("zoomLevel must be zero or positive: " + zAttr, Integer.parseInt(zAttr) >= 0);
+                int iTiles = Integer.parseInt(tAttr);
+                assertEquals(tilesCount, iTiles);
+
             }
             assertEquals(entry.getKey() + ": Metadata tile count does not match stored tile count.",
                 props.getTilesCount(), tilesCount);

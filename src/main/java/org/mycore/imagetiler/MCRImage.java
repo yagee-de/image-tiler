@@ -565,7 +565,7 @@ public class MCRImage {
         final MCRTiledPictureProps picProps = new MCRTiledPictureProps();
         picProps.width = getImageWidth();
         picProps.height = getImageHeight();
-        picProps.zoomlevel = getImageZoomLevels();
+        picProps.zoomLevel = getImageZoomLevels();
         picProps.tilesCount = imageTilesCount.get();
         return picProps;
     }
@@ -781,7 +781,7 @@ public class MCRImage {
             super.tilesCount = tilesCount;
             super.height = height;
             super.width = width;
-            super.zoomlevel = zoomLevel;
+            super.zoomLevel = zoomLevel;
         }
 
     }
