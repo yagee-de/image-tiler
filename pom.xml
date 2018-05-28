@@ -4,18 +4,18 @@
   <parent>
     <groupId>org.mycore</groupId>
     <artifactId>mycore-parent</artifactId>
-    <version>36</version>
+    <version>37-SNAPSHOT</version>
   </parent>
   <groupId>org.mycore.iview2</groupId>
   <artifactId>image-tiler</artifactId>
-  <version>1.12</version>
+  <version>1.13-SNAPSHOT</version>
   <name>MyCoRe IView2 Image Tiler Library</name>
   <description>Image Tiling Library</description>
   <scm>
     <connection>scm:git:https://github.com/MyCoRe-Org/image-tiler.git</connection>
     <developerConnection>scm:git:https://github.com/MyCoRe-Org/image-tiler.git</developerConnection>
     <url>https://github.com/MyCoRe-Org/image-tiler/tree/master</url>
-    <tag>v1.12</tag>
+    <tag>HEAD</tag>
   </scm>
   <properties>
     <java.target.version>1.8</java.target.version>
