@@ -1,7 +1,8 @@
 language: java
-sudo: false
-dist: trusty
-group: beta
+dist: xenial
+jdk:
+    - openjdk8
+    - openjdk11
 install: true
 cache:
   directories:
@@ -9,6 +10,7 @@ cache:
 env:
   global:
     - MAVEN_OPTS="-Xmx1024M -Xss128M -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC"
+    - _JAVA_OPTIONS="-Djdk.net.URLClassPath.disableClassPathURLCheck=true -Xmx2048m -Xms512m"
 script:
   - mvn -B clean install && mvn -B javadoc:javadoc
 after_script:
