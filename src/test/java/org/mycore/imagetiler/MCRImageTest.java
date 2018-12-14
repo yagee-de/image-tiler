@@ -17,10 +17,16 @@
  */
 package org.mycore.imagetiler;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.BitSet;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -36,9 +42,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.w3c.dom.Document;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
 /**
  * Provides a good test case for {@link MCRImage}.
  * @author Thomas Scheffler (yagee)
@@ -47,22 +50,20 @@ import static org.junit.Assert.assertTrue;
 public class MCRImageTest {
     private final HashMap<String, String> pics = new HashMap<>();
 
-    private File tileDir;
+    private Path tileDir;
 
-    private static boolean deleteDirectory(final File path) {
-        if (path.exists()) {
-            final File[] files = path.listFiles();
-            assert files != null;
-            for (final File file : files) {
-                if (file.isDirectory()) {
-                    deleteDirectory(file);
-                } else {
-                    //noinspection ResultOfMethodCallIgnored
-                    file.delete();
-                }
+    private static boolean deleteDirectory(final Path path) {
+        if(Files.exists(path)) {
+            try {
+                Files.walk(path)
+                .sorted(Comparator.reverseOrder())
+                .map(Path::toFile)
+                .forEach(File::delete);
+            } catch (IOException e) {
+                //ignore
             }
         }
-        return path.delete();
+        return !Files.exists(path);
     }
 
     /**
@@ -77,7 +78,7 @@ public class MCRImageTest {
         pics.put("1 pixel mega tile rest", "src/test/resources/BE_0681_0397.jpg");
         pics.put("extra small", "src/test/resources/5x5.jpg");
 
-        tileDir = new File("target/tileDir").getAbsoluteFile();
+        tileDir = Paths.get("target/tileDir");
         System.setProperty("java.awt.headless", "true");
     }
 
@@ -100,7 +101,7 @@ public class MCRImageTest {
             final String derivateID = "derivateID";
             final String imagePath = "imagePath/" + FilenameUtils.getName(entry.getValue());
             final MCRImage image = new MCRMemSaveImage(file.toPath(), derivateID, imagePath);
-            image.setTileDir(tileDir.toPath());
+            image.setTileDir(tileDir);
             final BitSet events = new BitSet(2);//pre and post event
             image.tile(new MCRTileEventHandler() {
 
@@ -116,8 +117,8 @@ public class MCRImageTest {
             });
             assertTrue("preImageReaderCreated() was not called", events.get(0));
             assertTrue("postImageReaderCreated() was not called", events.get(1));
-            assertTrue("Tile directory is not created.", tileDir.exists());
-            final Path iviewFile = MCRImage.getTiledFile(tileDir.toPath(), derivateID, imagePath);
+            assertTrue("Tile directory is not created.", Files.exists(tileDir));
+            final Path iviewFile = MCRImage.getTiledFile(tileDir, derivateID, imagePath);
             assertTrue("IView File is not created:" + iviewFile, Files.exists(iviewFile));
             final MCRTiledPictureProps props = MCRTiledPictureProps.getInstanceFromFile(iviewFile);
             final int tilesCount;
@@ -151,12 +152,12 @@ public class MCRImageTest {
         String final1 = "00";
         String final2 = "01";
         String derivateID = "junit_derivate_0000" + final1 + final2;
-        Path tiledFile = MCRImage.getTiledFile(tileDir.toPath(), derivateID, "foo/bar.tif");
-        assertEquals("Path to file is not es axpected.", tileDir + "/junit/derivate/" + final1 + "/"
-            + final2 + '/' + derivateID + "/foo/bar.iview2", tiledFile.toString());
-        tiledFile = MCRImage.getTiledFile(tileDir.toPath(), derivateID, "/foo/bar.tif");
-        assertEquals("Path to file is not es axpected.", tileDir + "/junit/derivate/" + final1 + "/"
-            + final2 + '/' + derivateID + "/foo/bar.iview2", tiledFile.toString());
+        Path pExpected = tileDir.resolve("junit/derivate/" + final1 + "/"
+            + final2 + '/' + derivateID + "/foo/bar.iview2");
+        Path tiledFile = MCRImage.getTiledFile(tileDir, derivateID, "foo/bar.tif");
+        assertEquals("Path to file is not es axpected.", pExpected, tiledFile);
+        tiledFile = MCRImage.getTiledFile(tileDir, derivateID, "/foo/bar.tif");
+        assertEquals("Path to file is not es axpected.", pExpected, tiledFile);
     }
 
 }

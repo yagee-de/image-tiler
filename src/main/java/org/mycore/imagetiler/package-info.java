@@ -20,4 +20,3 @@
  * Provides service classes for ImageViewer 2.
  */
 package org.mycore.imagetiler;
-

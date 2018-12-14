@@ -27,11 +27,11 @@ import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.channels.ByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.text.MessageFormat;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -273,9 +273,7 @@ public class MCRImage {
         return (short) Math.ceil(Math.log(maxDim) / LOG_2 - TILE_SIZE_FACTOR);
     }
 
-    private static ImageReader createImageReader(final Path imageFile) throws IOException {
-        final ImageInputStream imageInputStream = ImageIO.createImageInputStream(Files.newByteChannel(imageFile,
-            StandardOpenOption.READ));
+    private static ImageReader createImageReader(final ImageInputStream imageInputStream) throws IOException {
         final Iterator<ImageReader> readers = ImageIO.getImageReaders(imageInputStream);
         if (!readers.hasNext()) {
             imageInputStream.close();
@@ -502,36 +500,41 @@ public class MCRImage {
      */
     public MCRTiledPictureProps tile(MCRTileEventHandler eventHandler) throws IOException {
         long start = System.nanoTime();
-        LOGGER.info(MessageFormat.format("Start tiling of {0}:{1}", derivate, imagePath));
+        LOGGER.info(String.format(Locale.ENGLISH, "Start tiling of %s:%s", derivate, imagePath));
         //waterMarkFile = ImageIO.read(new File(MCRIview2Props.getProperty("Watermark")));	
         //initialize some basic variables
         if (eventHandler != null) {
             eventHandler.preImageReaderCreated();
         }
-        final ImageReader imageReader;
-        try {
-            imageReader = MCRImage.createImageReader(imageFile);
-        } finally {
-            if (eventHandler != null) {
-                eventHandler.postImageReaderCreated();
+        try (ByteChannel bc = Files.newByteChannel(imageFile, StandardOpenOption.READ);
+            ImageInputStream imageInputStream = ImageIO.createImageInputStream(bc)) {
+
+            final ImageReader imageReader;
+            try {
+                imageReader = MCRImage.createImageReader(imageInputStream);
+            } finally {
+                if (eventHandler != null) {
+                    eventHandler.postImageReaderCreated();
+                }
             }
-        }
-        if (imageReader == null) {
-            throw new IOException("No ImageReader available for file: " + imageFile);
-        }
-        LOGGER.debug("ImageReader: {}", imageReader.getClass());
-        try (final ZipOutputStream zout = getZipOutputStream()) {
-            setImageSize(imageReader);
-            doTile(imageReader, zout);
-            writeMetaData(zout);
-        } finally {
-            imageReader.dispose();
+            if (imageReader == null) {
+                throw new IOException("No ImageReader available for file: " + imageFile);
+            }
+            LOGGER.debug("ImageReader: {}", imageReader.getClass());
+            try (ZipOutputStream zout = getZipOutputStream()) {
+                setImageSize(imageReader);
+                doTile(imageReader, zout);
+                writeMetaData(zout);
+            } finally {
+                imageReader.dispose();
+            }
         }
         long end = System.nanoTime();
         final MCRTiledPictureProps imageProperties = getImageProperties();
         long pixel = imageProperties.getWidth() * imageProperties.getHeight();
-        LOGGER.info(MessageFormat.format("Finished tiling of {0}:{1} in {2} ms ({3} MPixel/s). ", derivate, imagePath,
-            (end - start) / 1e6, 1000 * pixel / (end - start)));
+        LOGGER.info(() -> String.format(Locale.ENGLISH,
+            "Finished tiling of %s:%s in %.0f ms (%d MPixel/s). ",
+            derivate, imagePath, (end - start) / 1e6, 1000 * pixel / (end - start)));
         return imageProperties;
     }
 
@@ -722,7 +725,7 @@ public class MCRImage {
         if (tile.getType() == BufferedImage.TYPE_CUSTOM) {
             throw new IOException("Do not know how to handle image type 'CUSTOM'");
         }
-        try (final ImageOutputStream imageOutputStream = ImageIO.createImageOutputStream(zout)) {
+        try (ImageOutputStream imageOutputStream = ImageIO.createImageOutputStream(zout)) {
             imgWriter.setOutput(imageOutputStream);
             //tile = addWatermark(scaleBufferedImage(tile));        
             final IIOImage iioImage = new IIOImage(tile, null, null);
