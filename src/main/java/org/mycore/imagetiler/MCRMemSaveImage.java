@@ -22,12 +22,11 @@ import java.awt.Graphics;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.zip.ZipOutputStream;
 
 import javax.imageio.ImageReader;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 /**
  * Uses a special fast and memory saving algorithm to tile images.
@@ -38,7 +37,7 @@ import org.apache.logging.log4j.Logger;
  * @author Matthias Eichner
  */
 class MCRMemSaveImage extends MCRImage {
-    private static final Logger LOGGER = LogManager.getLogger();
+    private static final Logger LOGGER = Logger.getLogger(MCRMemSaveImage.class.getName());
 
     private static final short MIN_STEP = 3;
 
@@ -81,9 +80,7 @@ class MCRMemSaveImage extends MCRImage {
     protected void doTile(final ImageReader imageReader, final ZipOutputStream zout) throws IOException {
         final int redWidth = (int) Math.ceil(getImageWidth() / ((double) megaTileSize / TILE_SIZE));
         final int redHeight = (int) Math.ceil(getImageHeight() / ((double) megaTileSize / TILE_SIZE));
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug(() -> "reduced size: " + redWidth + "x" + redHeight);
-        }
+        LOGGER.fine(() -> "reduced size: " + redWidth + "x" + redHeight);
         final int stopOnZoomLevel = getZoomLevels(redWidth, redHeight);
         final boolean lastPhaseNeeded = Math.max(redWidth, redHeight) > TILE_SIZE;
         //prepare empty image for the last phase of tiling process
@@ -98,13 +95,17 @@ class MCRMemSaveImage extends MCRImage {
 
         for (int x = 0; x < xcount; x++) {
             for (int y = 0; y < ycount; y++) {
-                LOGGER.debug("create new mega tile ({},{})", x, y);
+                if (LOGGER.isLoggable(Level.FINE)) {
+                    int fx = x;
+                    int fy = y;
+                    LOGGER.fine(() -> "create new mega tile (" + fx + "," + fy + ")");
+                }
                 final int xpos = x * megaTileSize;
                 final int width = Math.min(megaTileSize, getImageWidth() - xpos);
                 final int ypos = y * megaTileSize;
                 final int height = Math.min(megaTileSize, getImageHeight() - ypos);
                 final BufferedImage megaTile = MCRImage.getTileOfFile(imageReader, xpos, ypos, width, height);
-                LOGGER.debug("megaTile create - start tiling");
+                LOGGER.fine("megaTile create - start tiling");
                 // stitch
                 final BufferedImage tile = writeTiles(zout, megaTile, x, y, imageZoomLevels, zoomFactor,
                     stopOnZoomLevel);
@@ -125,7 +126,7 @@ class MCRMemSaveImage extends MCRImage {
         super.handleSizeChanged();
         final short zoomLevelAtATime = getZoomLevelPerStep(getImageWidth(), getImageHeight());
         setZoomLevelPerStep(zoomLevelAtATime);
-        LOGGER.debug(() -> "Using mega tile size of " + megaTileSize + "px for image sized " + getImageWidth() + "x"
+        LOGGER.fine(() -> "Using mega tile size of " + megaTileSize + "px for image sized " + getImageWidth() + "x"
             + getImageHeight());
     }
 
