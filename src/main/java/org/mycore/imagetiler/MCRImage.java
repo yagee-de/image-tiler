@@ -35,7 +35,6 @@ import java.nio.file.StandardOpenOption;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Logger;
 import java.util.stream.IntStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -56,6 +55,9 @@ import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlRootElement;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * The <code>MCRImage</code> class describes an image with different zoom levels that can be accessed by its tiles.
@@ -103,7 +105,7 @@ public class MCRImage {
 
     private static final double LOG_2 = Math.log(2);
 
-    private static final Logger LOGGER = Logger.getLogger(MCRImage.class.getName());
+    private static final Logger LOGGER = LogManager.getLogger();
 
     private static final int MIN_FILENAME_SUFFIX_LEN = 3;
 
@@ -154,7 +156,7 @@ public class MCRImage {
         try {
             imageWriteParam.setProgressiveMode(ImageWriteParam.MODE_DEFAULT);
         } catch (final UnsupportedOperationException e) {
-            LOGGER.warning("Your JPEG encoder does not support progressive JPEGs.");
+            LOGGER.warn("Your JPEG encoder does not support progressive JPEGs.");
         }
         imageWriteParam.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
         imageWriteParam.setCompressionQuality(JPEG_COMPRESSION_RATE);
@@ -215,7 +217,9 @@ public class MCRImage {
      * @return tile directory of derivate if <code>imagePath</code> is null or the tile file (.iview2)
      */
     public static Path getTiledFile(final Path tileDir, final String derivateID, final String imagePath) {
-        LOGGER.fine(() -> "tileDir: " + tileDir + " derivate: " + derivateID + ", imagePath: " + imagePath);
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("tileDir: {}, derivate: {}, imagePath: {}", tileDir, derivateID, imagePath);
+        }
         Path tileFile = getTiledFileBaseDir(tileDir, derivateID);
         if (imagePath == null) {
             return tileFile;
@@ -229,7 +233,7 @@ public class MCRImage {
 
     private static Path getTiledFileBaseDir(Path tileDir, String derivateID) {
         if (derivateID == null) {
-            LOGGER.info(() -> "No derivate ID given. Using " + tileDir + " as base directory.");
+            LOGGER.info("No derivate ID given. Using {} as base directory.", tileDir);
             return tileDir;
         }
         Path baseDir = tileDir;
@@ -318,7 +322,7 @@ public class MCRImage {
             LOGGER.info("Image is gray scale but uses color map. Converting to gray scale");
             targetType = BufferedImage.TYPE_BYTE_GRAY;
         } else if (pixelSize > JPEG_CM_PIXEL_SIZE) {
-            LOGGER.info(() -> "Converting image to 24 bit color depth: Color depth " + pixelSize);
+            LOGGER.info("Converting image to 24 bit color depth: Color depth {}", pixelSize);
             targetType = BufferedImage.TYPE_INT_RGB;
         } else if (tile.getType() == BufferedImage.TYPE_CUSTOM) {
             LOGGER.info("Converting image to 24 bit color depth: Image type is 'CUSTOM'");
@@ -365,7 +369,7 @@ public class MCRImage {
      * @return shrinked image
      */
     protected static BufferedImage scaleBufferedImage(final BufferedImage image) {
-        LOGGER.fine("Scaling image...");
+        LOGGER.debug("Scaling image...");
         final int width = image.getWidth();
         final int height = image.getHeight();
         final int newWidth = (int) Math.ceil(width / 2d);
@@ -376,7 +380,7 @@ public class MCRImage {
         bg.scale(ZOOM_FACTOR, ZOOM_FACTOR);
         bg.drawImage(image, 0, 0, null);
         bg.dispose();
-        LOGGER.fine(() -> "Scaling done: " + width + "x" + height);
+        LOGGER.debug("Scaling done: {}x{}", width, height);
         return bicubic;
     }
 
@@ -392,7 +396,7 @@ public class MCRImage {
             final ImageTypeSpecifier imageTypeSpec = imageTypes.next();
             if (imageTypeSpec.getBufferedImageType() != BufferedImage.TYPE_CUSTOM) {
                 //best fit
-                LOGGER.fine(() -> "Pretty sure we should use " + imageTypeSpec.getBufferedImageType());
+                LOGGER.debug("Pretty sure we should use {}", imageTypeSpec.getBufferedImageType());
                 imageType = imageTypeSpec.getBufferedImageType();
                 break;
             } else {
@@ -406,24 +410,24 @@ public class MCRImage {
     private static int getImageType(ColorModel colorModel) {
         int pixelSize = colorModel.getPixelSize();
         if (pixelSize > 8) {
-            LOGGER.fine(() -> "Quite sure we should use TYPE_INT_RGB for a pixel size of " + pixelSize);
+            LOGGER.debug("Quite sure we should use TYPE_INT_RGB for a pixel size of {}", pixelSize);
             return BufferedImage.TYPE_INT_RGB;
         } else if (pixelSize == 8) {
             if (isFakeGrayScale(colorModel)) {
-                LOGGER.fine("Quite sure we should use TYPE_BYTE_GRAY as the color palette has only gray values");
+                LOGGER.debug("Quite sure we should use TYPE_BYTE_GRAY as the color palette has only gray values");
                 return BufferedImage.TYPE_BYTE_GRAY;
             }
             if (colorModel.getNumColorComponents() > 1) {
-                LOGGER.fine("Quite sure we should use TYPE_INT_RGB for a pixel size of " + 8);
+                LOGGER.debug("Quite sure we should use TYPE_INT_RGB for a pixel size of " + 8);
                 return BufferedImage.TYPE_INT_RGB;
             }
-            LOGGER.fine("Quite sure we should use TYPE_BYTE_GRAY as there is only one color component present");
+            LOGGER.debug("Quite sure we should use TYPE_BYTE_GRAY as there is only one color component present");
             return BufferedImage.TYPE_BYTE_GRAY;
         } else if (pixelSize == 1) {
-            LOGGER.fine("Quite sure we should use TYPE_BYTE_GRAY as this image is binary.");
+            LOGGER.debug("Quite sure we should use TYPE_BYTE_GRAY as this image is binary.");
             return BufferedImage.TYPE_BYTE_GRAY;
         } else {
-            LOGGER.warning(() -> "Do not know how to handle a pixel size of " + pixelSize);
+            LOGGER.warn("Do not know how to handle a pixel size of {}", pixelSize);
         }
         //default value
         return BufferedImage.TYPE_INT_RGB;
@@ -437,7 +441,7 @@ public class MCRImage {
         int imageType;
         if (image.getType() != BufferedImage.TYPE_CUSTOM) {
             //best fit
-            LOGGER.fine(() -> "Pretty sure we should use {}" + image.getType());
+            LOGGER.debug("Pretty sure we should use {}", image.getType());
             imageType = image.getType();
         } else {
             imageType = getImageType(image.getColorModel());
@@ -516,7 +520,7 @@ public class MCRImage {
             if (imageReader == null) {
                 throw new IOException("No ImageReader available for file: " + imageFile);
             }
-            LOGGER.fine(() -> "ImageReader: {}" + imageReader.getClass());
+            LOGGER.debug("ImageReader: {}", imageReader.getClass());
             try (ZipOutputStream zout = getZipOutputStream()) {
                 setImageSize(imageReader);
                 doTile(imageReader, zout);
@@ -537,10 +541,9 @@ public class MCRImage {
     protected void doTile(final ImageReader imageReader, final ZipOutputStream zout) throws IOException {
         BufferedImage image = getTileOfFile(imageReader, 0, 0, getImageWidth(), getImageHeight());
         final int zoomLevels = getZoomLevels(getImageWidth(), getImageHeight());
-        LOGGER.info(() -> "Will generate " + zoomLevels + " zoom levels.");
+        LOGGER.info("Will generate {} zoom levels.", zoomLevels);
         for (int z = zoomLevels; z >= 0; z--) {
-            int zoomLevel = z;
-            LOGGER.info(() -> "Generating zoom level " + zoomLevel);
+            LOGGER.info("Generating zoom level {}", z);
             //image = reformatImage(scale(image));
             LOGGER.info("Writing out tiles..");
 
@@ -671,7 +674,7 @@ public class MCRImage {
      */
     private ZipOutputStream getZipOutputStream() throws IOException {
         final Path iviewFile = getTiledFile(tileBaseDir, derivate, imagePath);
-        LOGGER.info(() -> "Saving tiles in " + iviewFile);
+        LOGGER.info("Saving tiles in {}", iviewFile);
         Path parentDir = iviewFile.getParent();
         assert parentDir != null;
         if (!Files.exists(parentDir)) {
