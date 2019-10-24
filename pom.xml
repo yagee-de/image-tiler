@@ -19,7 +19,6 @@
   </scm>
   <properties>
     <java.target.version>11</java.target.version>
-    <!-- https://bugs.openjdk.java.net/browse/JDK-8208269 -->
     <log4j.version>2.12.0</log4j.version>
   </properties>
   <build>
