@@ -16,7 +16,7 @@
  * along with MyCoRe.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.mycore.imagetiler;
+package org.mycore.imagetiler.internal;
 
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
@@ -28,6 +28,7 @@ import javax.imageio.ImageReader;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.mycore.imagetiler.MCRImage;
 
 /**
  * Uses a special fast and memory saving algorithm to tile images.
@@ -37,7 +38,7 @@ import org.apache.logging.log4j.Logger;
  * @author Thomas Scheffler (yagee)
  * @author Matthias Eichner
  */
-class MCRMemSaveImage extends MCRImage {
+public class MCRMemSaveImage extends MCRImage {
     private static final Logger LOGGER = LogManager.getLogger();
 
     private static final short MIN_STEP = 3;
@@ -50,7 +51,7 @@ class MCRMemSaveImage extends MCRImage {
      * @param derivateID the derivate ID the image belongs to
      * @param relImagePath the relative path from the derivate root to the image
      */
-    MCRMemSaveImage(final Path file, final String derivateID, final String relImagePath) {
+    public MCRMemSaveImage(final Path file, final String derivateID, final String relImagePath) {
         super(file, derivateID, relImagePath);
     }
 

@@ -100,7 +100,7 @@ public class MCRImageTest {
             final File file = new File(entry.getValue());
             final String derivateID = "derivateID";
             final String imagePath = "imagePath/" + FilenameUtils.getName(entry.getValue());
-            final MCRImage image = new MCRMemSaveImage(file.toPath(), derivateID, imagePath);
+            final MCRImage image = MCRImage.getInstance(file.toPath(), derivateID, imagePath);
             image.setTileDir(tileDir);
             final BitSet events = new BitSet(2);//pre and post event
             image.tile(new MCRTileEventHandler() {
