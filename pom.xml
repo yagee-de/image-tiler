@@ -20,7 +20,7 @@
   <properties>
     <java.target.version>11</java.target.version>
     <jaxb.version>2.3.2</jaxb.version>
-    <log4j.version>2.12.1</log4j.version>
+    <log4j.version>2.13.3</log4j.version>
   </properties>
   <build>
     <plugins>
