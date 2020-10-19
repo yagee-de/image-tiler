@@ -20,11 +20,16 @@ package org.mycore.imagetiler;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.awt.Color;
+import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.BitSet;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -33,6 +38,11 @@ import java.util.Objects;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import javax.imageio.IIOImage;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.ImageWriter;
+import javax.imageio.stream.ImageOutputStream;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
@@ -74,6 +84,7 @@ public class MCRImageTest {
     @Before
     public void setUp() {
         pics.put("small", "src/test/resources/Bay_of_Noboto.jpg");
+        pics.put("stripes", "src/test/resources/stripes.png");
         pics.put("wide", "src/test/resources/labirynth_panorama_010.jpg");
         pics.put("1 pixel mega tile rest", "src/test/resources/BE_0681_0397.jpg");
         pics.put("extra small", "src/test/resources/5x5.jpg");
@@ -136,7 +147,15 @@ public class MCRImageTest {
                 assertTrue("zoomLevel must be zero or positive: " + zAttr, Integer.parseInt(zAttr) >= 0);
                 int iTiles = Integer.parseInt(tAttr);
                 assertEquals(tilesCount, iTiles);
-
+                if ("stripes".equals(entry.getKey())) {
+                    ZipEntry tileEntry = new ZipEntry("0/0/0.jpg");
+                    try (InputStream is = iviewImage.getInputStream(tileEntry)) {
+                        System.out.println("Reading tile " + tileEntry.getName());
+                        final Path targetDir = tileDir.getParent();
+                        Files.copy(iviewImage.getInputStream(tileEntry), targetDir.resolve("stripes-thumb.jpg"),
+                            StandardCopyOption.REPLACE_EXISTING);
+                    }
+                }
             }
             assertEquals(entry.getKey() + ": Metadata tile count does not match stored tile count.",
                 props.getTilesCount(), tilesCount);
@@ -144,6 +163,57 @@ public class MCRImageTest {
             final int y = props.height;
             assertEquals(entry.getKey() + ": Calculated tile count does not match stored tile count.",
                 MCRImage.getTileCount(x, y), tilesCount);
+        }
+    }
+
+    @Test
+    public void testStripes() throws IOException {
+        BufferedImage stripes = new BufferedImage(3000, 3000, BufferedImage.TYPE_INT_RGB);
+        Color top = new Color(134, 49, 68);
+        Color middle = new Color(255, 255, 255);
+        Color bottom = new Color(36, 52, 83);
+        for (int y = 0; y < 2366; y++) {
+            for (int x = 0; x < stripes.getWidth(); x++) {
+                stripes.setRGB(x, y, top.getRGB());
+            }
+        }
+        for (int y = 2366; y < 2376; y++) {
+            for (int x = 0; x < stripes.getWidth(); x++) {
+                stripes.setRGB(x, y, middle.getRGB());
+            }
+        }
+        for (int y = 2376; y < stripes.getHeight(); y++) {
+            for (int x = 0; x < stripes.getWidth(); x++) {
+                stripes.setRGB(x, y, bottom.getRGB());
+            }
+        }
+        final ImageWriter pngWriter = ImageIO.getImageWritersByMIMEType("image/png").next();
+        final String stripesImagePath = "target/simple-stripes.png";
+        try (FileOutputStream fout = new FileOutputStream(stripesImagePath);
+            ImageOutputStream imageOutputStream = ImageIO.createImageOutputStream(fout)) {
+            pngWriter.setOutput(imageOutputStream);
+            final IIOImage iioImage = new IIOImage(stripes, null, null);
+            ImageWriteParam imageWriteParam = pngWriter.getDefaultWriteParam();
+            imageWriteParam.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+            imageWriteParam.setCompressionQuality(0f);
+            pngWriter.write(null, iioImage, imageWriteParam);
+        }
+        final File file = new File(stripesImagePath);
+        final String derivateID = "derivateID";
+        final String imagePath = "imagePath/" + FilenameUtils.getName(stripesImagePath);
+        final MCRImage image = MCRImage.getInstance(file.toPath(), derivateID, imagePath);
+        image.setTileDir(tileDir);
+        image.tile();
+        assertTrue("Tile directory is not created.", Files.exists(tileDir));
+        final Path iviewFile = MCRImage.getTiledFile(tileDir, derivateID, imagePath);
+        try (final ZipFile iviewImage = new ZipFile(iviewFile.toFile())) {
+            ZipEntry tileEntry = new ZipEntry("0/0/0.jpg");
+            try (InputStream is = iviewImage.getInputStream(tileEntry)) {
+                final Path targetDir = tileDir.getParent();
+                final Path target = targetDir.resolve("simple-stripes-thumb.jpg");
+                System.out.println("Copy tile " + tileEntry.getName() + " to " + target);
+                Files.copy(is, target, StandardCopyOption.REPLACE_EXISTING);
+            }
         }
     }
 

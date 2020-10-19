@@ -375,7 +375,7 @@ public class MCRImage {
         final int height = image.getHeight();
         final int newWidth = (int) Math.ceil(width / 2d);
         final int newHeight = (int) Math.ceil(height / 2d);
-        final BufferedImage bicubic = new BufferedImage(newWidth, newHeight, image.getType());
+        final BufferedImage bicubic = new BufferedImage(newWidth, newHeight, getImageType(image));
         final Graphics2D bg = bicubic.createGraphics();
         bg.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
         bg.scale(ZOOM_FACTOR, ZOOM_FACTOR);
@@ -439,15 +439,7 @@ public class MCRImage {
      * @return  a {@link BufferedImage#getType()} response, where BufferedImage.TYPE_CUSTOM is translated to compatible image type.
      */
     public static int getImageType(BufferedImage image) {
-        int imageType;
-        if (image.getType() != BufferedImage.TYPE_CUSTOM) {
-            //best fit
-            LOGGER.debug("Pretty sure we should use {}", image.getType());
-            imageType = image.getType();
-        } else {
-            imageType = getImageType(image.getColorModel());
-        }
-        return imageType;
+        return getImageType(image.getColorModel());
     }
 
     /**
@@ -550,8 +542,8 @@ public class MCRImage {
 
             final int getMaxTileY = (int) Math.ceil((double) image.getHeight() / TILE_SIZE);
             final int getMaxTileX = (int) Math.ceil((double) image.getWidth() / TILE_SIZE);
-            for (int y = 0; y <= getMaxTileY; y++) {
-                for (int x = 0; x <= getMaxTileX; x++) {
+            for (int y = 0; y < getMaxTileY; y++) {
+                for (int x = 0; x < getMaxTileX; x++) {
                     final BufferedImage tile = getTile(image, x, y);
                     writeTile(zout, tile, x, y, z);
                 }
