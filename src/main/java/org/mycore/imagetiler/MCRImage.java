@@ -202,7 +202,7 @@ public class MCRImage {
         int tiles = 1;
         int w = imageWidth;
         int h = imageHeight;
-        while (w >= MCRImage.TILE_SIZE || h >= MCRImage.TILE_SIZE) {
+        while (w > MCRImage.TILE_SIZE || h > MCRImage.TILE_SIZE) {
             tiles += Math.ceil(w / (double) MCRImage.TILE_SIZE) * Math.ceil(h / (double) MCRImage.TILE_SIZE);
             w = (int) Math.ceil(w / 2d);
             h = (int) Math.ceil(h / 2d);
