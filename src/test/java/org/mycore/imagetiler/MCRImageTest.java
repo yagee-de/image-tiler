@@ -89,6 +89,7 @@ public class MCRImageTest {
         pics.put("1 pixel mega tile rest", "src/test/resources/BE_0681_0397.jpg");
         pics.put("extra small", "src/test/resources/5x5.jpg");
         pics.put("tiff 48 bit", "src/test/resources/tiff48.tif");
+        pics.put("tiff 16 bit", "src/test/resources/tiff16.tif");
 
         tileDir = Paths.get("target/tileDir");
         System.setProperty("java.awt.headless", "true");

@@ -316,7 +316,7 @@ public class MCRImage {
 
     private static BufferedImage convertIfNeeded(BufferedImage tile) {
         ColorModel colorModel = tile.getColorModel();
-        boolean convertToGray = isFakeGrayScale(colorModel);
+        boolean convertToGray = isFakeGrayScale(colorModel) || colorModel.getNumColorComponents() == 1;
         int pixelSize = colorModel.getPixelSize();
         int targetType = tile.getType();
         if (convertToGray) {
@@ -411,6 +411,10 @@ public class MCRImage {
     private static int getImageType(ColorModel colorModel) {
         int pixelSize = colorModel.getPixelSize();
         if (pixelSize > 8) {
+            if (colorModel.getNumColorComponents() == 1) {
+                LOGGER.debug("Quite sure we should use TYPE_BYTE_GRAY for a pixel size of {}", pixelSize);
+                return BufferedImage.TYPE_BYTE_GRAY;
+            }
             LOGGER.debug("Quite sure we should use TYPE_INT_RGB for a pixel size of {}", pixelSize);
             return BufferedImage.TYPE_INT_RGB;
         } else if (pixelSize == 8) {
@@ -720,7 +724,7 @@ public class MCRImage {
         }
         try (ImageOutputStream imageOutputStream = ImageIO.createImageOutputStream(zout)) {
             imgWriter.setOutput(imageOutputStream);
-            //tile = addWatermark(scaleBufferedImage(tile));        
+            //tile = addWatermark(scaleBufferedImage(tile));
             final IIOImage iioImage = new IIOImage(tile, null, null);
             imgWriter.write(null, iioImage, imageWriteParam);
         } finally {
