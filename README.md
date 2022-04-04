@@ -1,2 +1,2 @@
-# image-tiler ![Java CI workflow](https://github.com/MyCoRe-Org/image-tiler/actions/workflows/ci.yml/badge.svg) [![Codacy Badge](https://api.codacy.com/project/badge/Grade/7b830b16c9ad4d9a8082002f1373f6a1)](https://www.codacy.com/app/MyCoRe/image-tiler?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=MyCoRe-Org/image-tiler&amp;utm_campaign=Badge_Grade)
+# image-tiler ![Java CI workflow](https://github.com/yagee-de/image-tiler/actions/workflows/ci.yml/badge.svg) 
 MyCoRe IView2 Image Tiler Library 
