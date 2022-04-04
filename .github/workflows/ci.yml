@@ -8,4 +8,8 @@ jobs:
   build:
     name: Verify
     uses: yagee-de/gh-workflows/.github/workflows/maven-verify.yml@main
-
+    with:
+      matrix-exclude: >
+        [
+          {"jdk": "8"}
+        ]
