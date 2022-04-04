@@ -1,33 +1,11 @@
-name: Java CI
+name: Verify
 
-on: [ push, pull_request ]
-
-env:
-  MAVEN_OPTS: -Xmx1024M -Xss128M -XX:+CMSClassUnloadingEnabled
+on:
+  push:
+  pull_request:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    name: Verify
+    uses: yagee-de/gh-workflows/.github/workflows/maven-verify.yml@main
 
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v2
-
-    - name: Set up JDK
-      uses: actions/setup-java@v2
-      with:
-        java-version: 11
-        distribution: adopt
-
-    - name: Restore Maven cache
-      uses: skjolber/maven-cache-github-action@v1
-      with:
-        step: restore
-
-    - name: Build
-      run: mvn --batch-mode --update-snapshots verify javadoc:javadoc
-
-    - name: Save Maven cache
-      uses: skjolber/maven-cache-github-action@v1
-      with:
-        step: save
