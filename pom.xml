@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.mycore</groupId>
     <artifactId>mycore-parent</artifactId>
-    <version>47</version>
+    <version>48-SNAPSHOT</version>
   </parent>
   <groupId>org.mycore.iview2</groupId>
   <artifactId>image-tiler</artifactId>
@@ -36,18 +36,6 @@
             </program>
           </programs>
         </configuration>
-      </plugin>
-      <plugin>
-        <artifactId>maven-pmd-plugin</artifactId>
-        <executions>
-          <execution>
-            <goals>
-              <goal>check</goal>
-              <goal>cpd-check</goal>
-            </goals>
-            <phase>verify</phase>
-          </execution>
-        </executions>
       </plugin>
       <plugin>
         <groupId>com.github.spotbugs</groupId>
